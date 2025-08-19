@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            $table->dateTime('planned_exit')->nullable()->after('planned_at');
+            $table->dateTime('planned_exit')->nullable();
         });
     }
 
