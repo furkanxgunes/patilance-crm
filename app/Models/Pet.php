@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Pet extends Model
+{
+    
+    use HasFactory;
+
+    protected $fillable = [
+        'customer_id', 
+        'name',
+        'species',
+        'breed',
+        'age',
+        'gender',
+        'weight_kg',
+        'allergies',
+        'veterinarian_info',
+        'chip_no',
+        'appearance',
+        'special_marks',
+        'habits_toilet',
+        'vaccines',
+        'medications_text',
+    ];
+
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
+}
