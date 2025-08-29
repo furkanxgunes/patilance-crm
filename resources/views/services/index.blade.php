@@ -52,7 +52,6 @@
                         <th>Kategori</th>
                         <th>Fiyat</th>
                         <th>Birim</th>
-                        <th>Süre</th>
                         <th style="width: 150px;">İşlemler</th>
                     </tr>
                 </thead>
@@ -63,7 +62,7 @@
                             <td>{{ $service->category }}</td>
                             <td>{{ number_format($service->base_price, 2) }} ₺</td>
                             <td>{{ \App\Models\Service::getUnits()[$service->unit] ?? $service->unit }}</td>
-                            <td></td>
+                   
                             <td>
                                 <a href="{{ route('services.edit', $service) }}" class="btn btn-sm btn-warning" title="Düzenle">
                                     <i class="fas fa-edit"></i>

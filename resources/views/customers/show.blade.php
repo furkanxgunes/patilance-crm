@@ -13,7 +13,9 @@
                 <li class="breadcrumb-item"><a href="{{ route('customers.index') }}">Müşteriler</a></li>
                 <li class="breadcrumb-item active" aria-current="page">{{ $customer->name }}</li>
             </ol>
+       
         </nav>
+     
     </div>
 @stop
 
@@ -33,13 +35,14 @@
                     <strong>Ad Soyad:</strong> {{ $customer->name }}<br>
                     <strong>E-posta:</strong> {{ $customer->email }}<br>
                     <strong>Telefon:</strong> {{ $customer->phone ?? 'N/A' }}<br>
-                    <strong>Adres:</strong> {{ $customer->address ?? 'N/A' }}
+                    <strong>Adres:</strong> {{ $customer->address ?? 'N/A' }}<br>
+                    <strong>Notlar:</strong> {{ $customer->notes ?? '' }}<br>
+                    <strong>Segment:</strong> {{ $customer->segment->name ?? 'N/A' }}
+
                 </p>
-                <x-slot name="footer">
-                    <a href="{{ route('customers.edit', $customer) }}" class="btn btn-warning btn-sm">
-                        <i class="fas fa-edit"></i> Bilgileri Düzenle
-                    </a>
-                </x-slot>
+                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-warning">
+                    <span class="">Düzenle</span>
+                </a>
             </x-adminlte-card>
         </div>
         <div class="col-md-6">

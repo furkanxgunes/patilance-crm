@@ -22,11 +22,11 @@
                 @include('profile.partials.update-password-form')
             </x-adminlte-card>
         </div>
-        <div class="col-md-6">
+        <!-- <div class="col-md-6">
             {{-- Hesabı Silme Formu --}}
             <x-adminlte-card title="Hesabı Sil" theme="danger" icon="fas fa-trash-alt" class="mb-4">
                 @include('profile.partials.delete-user-form')
             </x-adminlte-card>
-        </div>
+        </div> -->
     </div>
 @stop

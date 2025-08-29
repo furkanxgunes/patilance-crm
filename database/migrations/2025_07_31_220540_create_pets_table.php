@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Concerns\SoftDeletes;
 
 return new class extends Migration
 {
@@ -15,7 +16,7 @@ return new class extends Migration
         $table->id();
         
         // İLİŞKİ KURULUYOR: Bu pet hangi müşteriye ait?
-        $table->foreignId('customer_id')->constrained()->onDelete('cascade');
+        $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
         
         $table->string('name'); // Pet'in adı
         $table->string('species'); // Tür (Kedi, Köpek)
@@ -28,6 +29,7 @@ return new class extends Migration
         $table->text('allergies')->nullable(); 
         $table->text('veterinarian_info')->nullable(); 
         $table->timestamps();
+        $table->softDeletes();
     });
 }
 

@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Concerns\SoftDeletes;
 
 return new class extends Migration
 {
@@ -19,6 +20,7 @@ return new class extends Migration
         $table->decimal('base_price', 8, 2); // Temel Fiyat, örn: 350.00
         $table->integer('duration_minutes')->nullable(); // Tahmini Süre (dakika cinsinden)
         $table->timestamps(); // created_at ve updated_at sütunlarını otomatik ekler
+        $table->softDeletes();
     });
 }
 

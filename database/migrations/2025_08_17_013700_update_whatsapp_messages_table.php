@@ -32,7 +32,7 @@ return new class extends Migration
 
         // Re-add the foreign key constraints
         Schema::table('whatsapp_messages', function (Blueprint $table) {
-            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('set null');
             $table->foreign('appointment_id')->references('id')->on('appointments')->onDelete('set null');
         });
     }
@@ -55,7 +55,7 @@ return new class extends Migration
         ) DEFAULT 'manual'");
 
         Schema::table('whatsapp_messages', function (Blueprint $table) {
-            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('set null');
             $table->foreign('appointment_id')->references('id')->on('appointments')->onDelete('set null');
         });
     }

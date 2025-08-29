@@ -52,7 +52,7 @@
                                         <span class="badge bg-primary">Personel</span>
                                     @endif
                                 </td>
-                                <td>{{ $user->created_at->format('d.m.Y H:i') }}</td>
+                                <td>{{ $user->created_at->format('d.m.Y H:i') ?? '-' }}</td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="{{ route('users.edit', $user->id) }}" 

@@ -3,14 +3,19 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PetController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SegmentController;
+use App\Http\Controllers\BreedController;
 
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 Route::get('/home', function () {
-    return view('home');
+    return view('dashboard');
 });
 // Campaign routes
 
@@ -35,7 +40,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::resource('services', App\Http\Controllers\ServiceController::class);
-    Route::resource('customers', App\Http\Controllers\CustomerController::class); // YENİ EKLENEN SATIR
+    Route::resource('customers', App\Http\Controllers\CustomerController::class); 
     Route::resource('appointments', App\Http\Controllers\AppointmentController::class);
     Route::resource('campaigns', App\Http\Controllers\CampaignController::class);
     Route::get('/appointments/{appointment}/checkin', [App\Http\Controllers\AppointmentController::class, 'checkinForm'])->name('appointments.checkin.form');
@@ -72,8 +77,30 @@ Route::middleware('auth')->group(function () {
     // Müşteriye ait petleri JSON formatında çekme (eğer AJAX ile kullanılıyorsa)
     Route::get('/customers/{customer}/pets-json', [PetController::class, 'getPetsByCustomerJson'])->name('pets.json');
 
-    
+    // Breed Management
+    Route::get('/breeds', [BreedController::class, 'index'])->name('breeds.index');
+    Route::post('/breeds', [BreedController::class, 'store'])->name('breeds.store');
+    Route::put('/breeds/{breed}', [BreedController::class, 'update'])->name('breeds.update');
+    Route::delete('/breeds/{breed}', [BreedController::class, 'destroy'])->name('breeds.destroy');
+
+// Segmentler
+Route::prefix('segments')->name('segments.')->group(function () {
+    Route::get('/', [SegmentController::class, 'index'])->name('index');
+    Route::post('/', [SegmentController::class, 'store'])->name('store');
+    Route::put('/{segment}', [SegmentController::class, 'update'])->name('update');
+    Route::delete('/{segment}', [SegmentController::class, 'destroy'])->name('destroy');
+
+    Route::post('/services/update', [SegmentController::class, 'updateServices'])->name('services.update');
+
+    // AJAX endpoint
+    Route::get('/{segment}/services/json', [SegmentController::class, 'getServicesJson']);
 });
+
+    // Breed Management
+  
+
+});
+
 Route::get('/pdf/{filename}', function ($filename) {
     $path = storage_path('app/tmp/' . $filename);
 

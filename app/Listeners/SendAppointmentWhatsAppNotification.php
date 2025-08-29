@@ -25,6 +25,8 @@ class SendAppointmentWhatsAppNotification implements ShouldQueue
 
     public function handle(AppointmentStatusChanged $event)
     {
+        Log::info('Listener Tetiklenme Yığını:', debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 7));
+        
         $appointment = $event->appointment;
 
         Log::info('SendAppointmentWhatsAppNotification tetiklendi', [
@@ -110,6 +112,45 @@ class SendAppointmentWhatsAppNotification implements ShouldQueue
 
             Log::info('PDF gönderim sonucu', $result);
         }
+              // Eğer completed ise PDF gönder
+              if ($event->newStatus->value === 'completed') {
+                $tmpPath = storage_path('app/tmp');
+                if (!file_exists($tmpPath)) {
+                    mkdir($tmpPath, 0755, true);
+                }
+    
+                $filename = 'randevu-' . $appointment->id . '.pdf';
+                $fullPath = $tmpPath . '/' . $filename;
+    
+                $pdf = Pdf::loadView('appointments.pdf', [
+                    'appointment' => $appointment
+                ])->setPaper('a4');
+                $pdf->save($fullPath);
+    
+                  // WhatsApp template parametreleri
+                $params = [
+                    $appointment->customer->name ?? 'Müşteri',   // body param
+                    $appointment->pet->name ?? 'Minik Dostunuz',  // body param
+                    $appointment->pet->name ?? 'Minik Dostunuz'  // body param
+                    // Document zaten header olarak gönderildiği için link parametresi burada yok
+                ];
+    
+                // WhatsAppService'e gönder (sadece document)
+                $result = $this->whatsappService->sendMessageWithDocument(
+                    $customer->phone,
+                    'Randevu detayları ekte yer almaktadır.', // caption
+                    $fullPath,
+                    'appointment_completed',
+                    $params
+                );
+    
+                // PDF’i sil
+                if (file_exists($fullPath)) {
+                    // unlink($fullPath);
+                }
+    
+                Log::info('PDF gönderim sonucu', $result);
+            }
 
         // Mesajı veritabanına kaydet
         $whatsappMessage = WhatsAppMessage::create([
@@ -157,7 +198,7 @@ class SendAppointmentWhatsAppNotification implements ShouldQueue
         return match($status->value) {
             'scheduled' => 'appointment_scheduled',
             'checked_in' => 'appointment_checked_in',
-            'completed' => 'checkout_confirmation',
+            'completed' => 'appointment_completed',
             'cancelled' => 'appointment_cancelled',
             default => 'appointment_updated',
         };
@@ -191,6 +232,13 @@ class SendAppointmentWhatsAppNotification implements ShouldQueue
     private function prepareTemplateParameters($appointment): array
     {
         if ($appointment->status === AppointmentStatus::CHECKED_IN) {
+            return [
+                $appointment->customer->name ?? 'Müşteri',
+                $appointment->pet->name ?? 'Minik Dostunuz',
+                $appointment->pet->name ?? 'Minik Dostunuz',
+            ];
+        }
+        if ($appointment->status === AppointmentStatus::COMPLETED) {
             return [
                 $appointment->customer->name ?? 'Müşteri',
                 $appointment->pet->name ?? 'Minik Dostunuz',

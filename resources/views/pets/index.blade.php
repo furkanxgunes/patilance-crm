@@ -71,6 +71,9 @@
                                         <a href="{{ route('pets.edit', $pet) }}" class="btn btn-sm btn-warning" title="Düzenle">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        <a href="{{ route('pets.show', $pet) }}" class="btn btn-sm btn-info" title="Detaylar">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                                         <form method="POST" action="{{ route('pets.destroy', $pet) }}" class="d-inline" onsubmit="return confirm('Bu peti silmek istediğinizden emin misiniz?');">
                                             @csrf
                                             @method('DELETE')

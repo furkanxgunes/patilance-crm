@@ -16,6 +16,10 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): View
     {
+        if (auth()->check()) {
+            return view('dashboard');
+        }
+        
         return view('auth.login');
     }
 

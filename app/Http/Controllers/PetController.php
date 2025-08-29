@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Pet;
 use App\Models\Customer;
+use App\Models\Breed;
 use Illuminate\Http\Request;
 
 class PetController extends Controller
@@ -35,7 +36,8 @@ class PetController extends Controller
      */ public function create()
     {
         $customers = Customer::orderBy('name')->get(); // Tüm müşterileri al
-        return view('pets.create', ['customers' => $customers]);
+        $breeds = Breed::orderBy('name')->get(); // Tüm irkları al
+        return view('pets.create', ['customers' => $customers, 'breeds' => $breeds]);
     }
     // Müşteriye özel pet ekleme 
     public function createForCustomer(Customer $customer)
@@ -52,18 +54,22 @@ class PetController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'name' => 'required|string|max:255',
             'species' => 'required|string|in:Köpek,Kedi', // Sadece bu iki değer kabul edilsin
-            'breed' => 'required|string|max:255',
+            'breed' => 'nullable|string|max:255',
             'age' => 'required|numeric|max:50', // Yaş 50'den büyük olmasın
             'gender' => 'required|string|in:Erkek,Dişi',
             'weight_kg' => 'required|numeric',
+            'breed_id' => 'required|exists:breeds,id', // breed_id doğrulaması
         ]);
         
+        $validatedData['breed'] = Breed::find($request->input('breed_id'))->name;
         // 3. Yeni Pet'i oluştur ve kaydet
         $pet = Pet::create($validatedData);
+        
 
         // 4. Başarıyla eklendiyse ilgili pet'in düzenleme sayfasına yönlendir
         return redirect()->route('pets.edit', $pet)
-                         ->with('success', 'Pet başarıyla eklendi, şimdi detayları düzenleyebilirsiniz.');}
+                         ->with('success', 'Pet başarıyla eklendi, şimdi detayları düzenleyebilirsiniz.');
+                        }
 
     /**
      * Display the specified resource.
@@ -72,12 +78,15 @@ class PetController extends Controller
     {
         // Müşteri ve randevu geçmişini (hizmetleriyle) birlikte yükle
         $pet->load('customer');
+
+        // breed check name
+        $breed = Breed::find($pet->breed_id);
         $appointments = $pet->appointments()
             ->with(['customer', 'services'])
             ->latest()
             ->paginate(10)
             ->withQueryString();
-        return view('pets.show', compact('pet', 'appointments'));
+        return view('pets.show', compact('pet', 'appointments', 'breed'));
     }
 
     /**
@@ -86,8 +95,9 @@ class PetController extends Controller
     public function edit(Pet $pet)
     {
            $customers = Customer::orderBy('name')->get(); // Tüm müşterileri al
+           $breeds = Breed::orderBy('name')->get(); // Tüm irkları al
     
-    return view('pets.edit', compact('pet', 'customers'));
+    return view('pets.edit', compact('pet', 'customers', 'breeds'));
     }
 
     /**
@@ -100,6 +110,7 @@ class PetController extends Controller
             'name' => 'required|string|max:255',
             'species' => 'required|string|in:Köpek,Kedi',
             'breed' => 'nullable|string|max:255',
+            'breed_id' => 'required|exists:breeds,id', // breed_id doğrulaması
             'age' => 'nullable|numeric|max:50',
             'gender' => 'nullable|string|in:Erkek,Dişi',
             'weight_kg' => 'nullable|numeric',
@@ -112,7 +123,7 @@ class PetController extends Controller
             'chip_no' => 'nullable|string|unique:pets,chip_no,' . $pet->id,
             'medications_text' => 'nullable|string',
         ]);
-        
+        $validatedData['breed'] = Breed::find($request->input('breed_id'))->name;
         $pet->update($validatedData);
 
         return redirect()->route('pets.show', $pet)->with('success', 'Evcil hayvan bilgileri başarıyla güncellendi.');

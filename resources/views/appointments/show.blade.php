@@ -35,7 +35,7 @@
                         <h4>Evcil Hayvan Bilgileri</h4>
                         @if ($appointment->pet)
                             <p><strong>Adı:</strong> <a href="{{ route('pets.edit', $appointment->pet) }}">{{ $appointment->pet->name }}</a></p>
-                            <p><strong>Türü:</strong> {{ $appointment->pet->species }}</p>
+                            <p><strong>Irk:</strong> {{ $appointment->pet->breed }}</p>
                             <p><strong>Cinsiyeti:</strong> {{ $appointment->pet->gender }}</p>
                         @else
                             <p class="text-danger">Bu randevuya atanmış bir evcil hayvan bulunmamaktadır.</p>
@@ -50,6 +50,7 @@
                     <div class="col-md-6">
                         <h4>Randevu Bilgileri</h4>
                         <p><strong>Planlanan:</strong> {{ optional($appointment->planned_at)->format('d.m.Y H:i') ?? '-' }}</p>
+                        <p><strong>Planlanan Çıkış:</strong> {{ optional($appointment->planned_exit)->format('d.m.Y H:i') ?? '-' }}</p>
                         <p><strong>Check-in:</strong> {{ optional($appointment->checkin_at)->format('d.m.Y H:i') ?? '-' }}</p>
                         <p><strong>Check-out:</strong> {{ optional($appointment->checkout_at)->format('d.m.Y H:i') ?? '-' }}</p>
                         <p><strong>Durum:</strong> 
@@ -108,7 +109,7 @@
                                                         $discountPercent = $originalPrice > 0 ? round(($discount / $originalPrice) * 100, 0) : 0;
                                                         $totalDiscount = $originalSubtotal - $discountedSubtotal;
                                                         $totalDiscountPercent = $originalSubtotal > 0 ? round(($totalDiscount / $originalSubtotal) * 100, 0) : 0;
-                                                        
+                                                        $extraTotal = 0;
                                                         $unitText = match($service->unit) {
                                                             'day' => 'Gün',
                                                             'hour' => 'Saat',
@@ -139,6 +140,23 @@
                                                         </td>
                                                     </tr>
                                                 @endforeach
+                                                @if ($appointment->extraItems->isNotEmpty())
+                                               
+                                                    @foreach ($appointment->extraItems as $extraItem)
+                                                
+                                                        <tr>
+                                                            <td>{{ $extraItem->name }} <small>(Ürün/Ek)</small></td>
+                                                            <td class="text-nowrap">{{ number_format($extraItem->price, 2) }} TL </td>
+                                                            <td class="text-nowrap">{{ number_format($extraItem->price, 2) }} TL </td>
+                                                            <td class="text-nowrap">1</td>
+                                                            <td class="text-nowrap">{{ number_format($extraItem->price, 2) }} TL </td>
+                                                            <td class="text-nowrap">{{ number_format($extraItem->price, 2) }} TL </td>
+                                                        </tr>
+                                                    @php 
+                                                    $extraTotal += $extraItem->price;
+                                                    @endphp
+                                                    @endforeach
+                                                @endif
                                             </tbody>
                                             <tfoot class="bg-light">
                                                 @php
@@ -147,9 +165,9 @@
                                                 @endphp
                                                 <tr class="font-weight-bold">
                                                     <td colspan="4" class="text-right">GENEL TOPLAM:</td>
-                                                    <td class="text-nowrap">{{ number_format($originalGrand, 2) }} TL</td>
+                                                    <td class="text-nowrap">{{ number_format($originalGrand + $extraTotal, 2) }} TL</td>
                                                     <td class="text-nowrap text-success">
-                                                        {{ number_format($discountedGrand, 2) }} TL
+                                                        {{ number_format($discountedGrand + $extraTotal, 2) }} TL
                                                         @if($totalDiscount > 0)
                                                             <div class="text-muted small">
                                                                 <span class="text-success">Toplam İndirim: -{{ number_format($totalDiscount, 2) }} TL (%{{ $totalDiscountPercent }})</span>
@@ -164,7 +182,7 @@
                                             
                                             <div class="d-flex justify-content-between align-items-center mb-1 ml-3">
                                                 <strong>Toplam:</strong>
-                                                <span class="font-weight-bold">{{ number_format($discountedGrand, 2) }} TL</span>
+                                                <span class="font-weight-bold">{{ number_format($originalGrand + $extraTotal, 2) }} TL</span>
                                             </div>
                                             @if($totalDiscount > 0)
                                                 <div class="d-flex justify-content-between align-items-center text-success ml-3">
@@ -173,7 +191,7 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mt-1 ml-3">
                                                     <strong>Ödenecek Tutar:</strong>
-                                                    <span class="font-weight-bold text-success">{{ number_format($discountedGrand, 2) }} TL</span>
+                                                    <span class="font-weight-bold text-success">{{ number_format($discountedGrand + $extraTotal, 2) }} TL</span>
                                                 </div>
                                             @endif
                                         </div>

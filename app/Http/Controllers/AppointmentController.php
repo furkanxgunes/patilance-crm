@@ -46,28 +46,45 @@ class AppointmentController extends Controller
      */
     public function create()
     {
-        $customers = \App\Models\Customer::with(['pets' => function($query) {
-            $query->select('id', 'customer_id', 'name')
-                  ->withCount(['appointments' => function($q) {
-                      $q->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::CHECKED_IN]);
-                  }]);
-        }])->get(['id','name']);
-        
+        $customers = \App\Models\Customer::with([
+            'segment',
+            'pets' => function($query) {
+                $query->select('id', 'customer_id', 'name','breed_id')
+                      ->withCount(['appointments' => function($q) {
+                          $q->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::CHECKED_IN]);
+                      }]);
+            },
+            'segment.services',
+            'pets.breed' // segment ve indirimli servisleri
+        ])->get(['id','name', 'segment_id']);
         // Get pet IDs that have active appointments
         $petsWithAppointments = \App\Models\Pet::whereHas('appointments', function($q) {
             $q->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::CHECKED_IN]);
         })->pluck('id')->toArray();
         
-        $services = \App\Models\Service::all();
+        
+        $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
         $statuses = AppointmentStatus::cases();
-
+        
+            // Her müşteri için segment indirimlerini maple
+    $customerSegments = [];
+    foreach ($customers as $customer) {
+        if ($customer->segment) {
+            $discounts = [];
+            foreach ($customer->segment->services as $svc) {
+                $discounts[$svc->id] = $svc->pivot->discount_percent ?? 0;
+            }
+            $customerSegments[$customer->id] = $discounts;
+        }
+    }
         return view('appointments.create', compact(
             'customers', 
             'services', 
             'users',
             'statuses',
-            'petsWithAppointments'
+            'petsWithAppointments',
+            'customerSegments',
         ));
     }
 
@@ -106,6 +123,9 @@ class AppointmentController extends Controller
             'service_prices.*' => 'required|numeric|min:0',
             'user_id' => 'nullable|array',
             'user_id.*' => 'nullable|exists:users,id',
+            'extra_items'   => 'nullable|array',
+            'extra_items.*.name'     => 'nullable|string|max:255',
+            'extra_items.*.price'    => 'nullable|numeric|min:0',
 
         ]);
         
@@ -145,6 +165,19 @@ class AppointmentController extends Controller
             // Attach services with their quantities and prices
             $appointment->services()->attach($serviceData);
             
+            // Attach extra items
+            $extraItems = $validated['extra_items'] ?? [];
+            foreach ($extraItems as $item) {
+                
+                if (empty($item['name']) || empty($item['price'])) {
+                    continue;
+                }                                            
+                $appointment->extraItems()->create([
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                ]);
+            }   
+            
             return redirect()->route('appointments.index')->with('success', 'Randevu başarıyla oluşturuldu.');
         });
     }
@@ -164,22 +197,20 @@ class AppointmentController extends Controller
     public function edit(Appointment $appointment)
     {
         $appointment->load(['customer', 'pet', 'services']);
-        $customers = \App\Models\Customer::with('pets:id,customer_id,name')->get(['id','name']);
-        $services = \App\Models\Service::all();
+        $customers = \App\Models\Customer::with('pets:id,breed_id,customer_id,name', 'segment.services','pets.breed')->get(['id','name', 'segment_id']);
+        $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
         $statuses = AppointmentStatus::cases();
-        
         // Prepare service data for the view
         $serviceQuantities = [];
         $serviceDiscountedPrices = [];
         $serviceNotes = [];
-        
+        // dd($customers[1]->pets[1]->breed->services[6]->pivot->toArray());
         foreach ($appointment->services as $service) {
             $serviceQuantities[$service->id] = $service->pivot->quantity ?? 1;
             $serviceDiscountedPrices[$service->id] = $service->pivot->discounted_price ?? $service->base_price;
             $serviceNotes[$service->id] = $service->pivot->notes ?? '';
         }
-
         
         return view('appointments.edit', compact(
             'appointment', 
@@ -214,11 +245,16 @@ class AppointmentController extends Controller
             'service_discounted_prices.*' => 'nullable|numeric|min:0',
             'user_id' => 'nullable|array',
             'user_id.*' => 'nullable|exists:users,id',
+            // Extra items
+            'extra_items' => 'nullable|array',
+            'extra_items.*.id'       => 'nullable|integer|exists:appointment_extra_items,id',
+            'extra_items.*.name'     => 'nullable|string|max:255',
+            'extra_items.*.price'    => 'nullable|numeric|min:0',
         ]);
         // Start a database transaction
         return \DB::transaction(function () use ($appointment, $validated) {
             // Update the appointment
-            $appointment->update(Arr::except($validated, ['service_ids', 'service_quantities','service_discounted_prices','user_id']));
+            $appointment->update(Arr::except($validated, ['service_ids', 'service_quantities','service_discounted_prices','user_id','extra_items']));
 
             // Get services with their current prices
             $services = \App\Models\Service::whereIn('id', $validated['service_ids'])->get();
@@ -239,9 +275,44 @@ class AppointmentController extends Controller
                     'updated_at' => now(),
                 ];
             }
-            
             // Sync services with their quantities and prices
             $appointment->services()->sync($serviceData);
+
+
+
+        // Ek ürünleri güncelle (create / update / delete)
+        $incomingExtraItems = $validated['extra_items'] ?? [];
+
+        // Mevcut item id’lerini al
+        $existingIds = $appointment->extraItems()->pluck('id')->toArray();
+        $incomingIds = collect($incomingExtraItems)->pluck('id')->filter()->toArray();
+
+        // Silinecekler: DB’de olup, request’te olmayan id’ler
+        $toDelete = array_diff($existingIds, $incomingIds);
+        if (!empty($toDelete)) {
+            $appointment->extraItems()->whereIn('id', $toDelete)->delete();
+        }
+
+        // Kaydet / güncelle
+        foreach ($incomingExtraItems as $item) {
+            if (empty($item['name']) || empty($item['price'])) {
+                continue;
+            }
+
+            if (!empty($item['id'])) {
+                // Güncelle
+                $appointment->extraItems()->where('id', $item['id'])->update([
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                ]);
+            } else {
+                // Yeni ekle
+                $appointment->extraItems()->create([
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                ]);
+            }
+        }
 
             $appointment->load(['customer:id,name', 'pet:id,name']);
             $msgName = trim(($appointment->customer->name ?? '') . ' - ' . ($appointment->pet->name ?? ''));
@@ -273,8 +344,8 @@ class AppointmentController extends Controller
      */
     public function checkinForm(Appointment $appointment)
     {
-        $appointment->load(['customer', 'pet', 'services']);
-        $services = \App\Models\Service::all();
+        $appointment->load(['customer.segment.services', 'pet', 'services']);
+        $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
         return view('appointments.checkin', compact('appointment', 'services', 'users'));
     }
@@ -303,6 +374,9 @@ class AppointmentController extends Controller
             'service_prices.*' => 'required_with:service_ids|numeric|min:0',
             'user_id' => 'nullable|array',
             'user_id.*' => 'nullable|exists:users,id',
+            'extra_items'   => 'nullable|array',
+            'extra_items.*.name'     => 'nullable|string|max:255',
+            'extra_items.*.price'    => 'nullable|numeric|min:0',
         ]);
 
         // Start transaction to ensure data consistency
@@ -336,6 +410,39 @@ class AppointmentController extends Controller
                 
                 // Sync services with their quantities and prices
                 $appointment->services()->sync($serviceData);
+                        // Ek ürünleri güncelle (create / update / delete)
+                $incomingExtraItems = $validated['extra_items'] ?? [];
+
+                // Mevcut item id’lerini al
+                $existingIds = $appointment->extraItems()->pluck('id')->toArray();
+                $incomingIds = collect($incomingExtraItems)->pluck('id')->filter()->toArray();
+
+                // Silinecekler: DB’de olup, request’te olmayan id’ler
+                $toDelete = array_diff($existingIds, $incomingIds);
+                if (!empty($toDelete)) {
+                    $appointment->extraItems()->whereIn('id', $toDelete)->delete();
+                }
+
+                // Kaydet / güncelle
+                foreach ($incomingExtraItems as $item) {
+                    if (empty($item['name']) || empty($item['price'])) {
+                        continue;
+                    }
+
+                    if (!empty($item['id'])) {
+                        // Güncelle
+                        $appointment->extraItems()->where('id', $item['id'])->update([
+                            'name' => $item['name'],
+                            'price' => $item['price'],
+                        ]);
+                    } else {
+                        // Yeni ekle
+                        $appointment->extraItems()->create([
+                            'name' => $item['name'],
+                            'price' => $item['price'],
+                        ]);
+                    }
+                }
             }
 
             $message = 'Randevu için check-in başarıyla tamamlandı.';
@@ -362,7 +469,7 @@ class AppointmentController extends Controller
     public function checkoutForm(Appointment $appointment)
     {
         $appointment->load(['customer', 'pet', 'services']);
-        $services = \App\Models\Service::all();
+        $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
         return view('appointments.checkout', compact('appointment', 'services', 'users'));
     }
@@ -396,6 +503,9 @@ class AppointmentController extends Controller
             'pivot.*.notes' => 'nullable|string',
             'user_id' => 'nullable|array',
             'user_id.*' => 'nullable|exists:users,id',
+            'extra_items'   => 'nullable|array',
+            'extra_items.*.name'     => 'nullable|string|max:255',
+            'extra_items.*.price'    => 'nullable|numeric|min:0',
         ]);
 
         // Enforce: checkout_at must be strictly after checkin_at
@@ -429,6 +539,39 @@ class AppointmentController extends Controller
             
             // Sync services with their quantities and prices
             $appointment->services()->sync($serviceData);
+                       // Ek ürünleri güncelle (create / update / delete)
+                       $incomingExtraItems = $validated['extra_items'] ?? [];
+
+                       // Mevcut item id’lerini al
+                       $existingIds = $appointment->extraItems()->pluck('id')->toArray();
+                       $incomingIds = collect($incomingExtraItems)->pluck('id')->filter()->toArray();
+       
+                       // Silinecekler: DB’de olup, request’te olmayan id’ler
+                       $toDelete = array_diff($existingIds, $incomingIds);
+                       if (!empty($toDelete)) {
+                           $appointment->extraItems()->whereIn('id', $toDelete)->delete();
+                       }
+       
+                       // Kaydet / güncelle
+                       foreach ($incomingExtraItems as $item) {
+                           if (empty($item['name']) || empty($item['price'])) {
+                               continue;
+                           }
+       
+                           if (!empty($item['id'])) {
+                               // Güncelle
+                               $appointment->extraItems()->where('id', $item['id'])->update([
+                                   'name' => $item['name'],
+                                   'price' => $item['price'],
+                               ]);
+                           } else {
+                               // Yeni ekle
+                               $appointment->extraItems()->create([
+                                   'name' => $item['name'],
+                                   'price' => $item['price'],
+                               ]);
+                           }
+                       }
         }
 
         $appointment->update([

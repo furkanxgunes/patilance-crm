@@ -33,14 +33,15 @@ document.addEventListener('DOMContentLoaded', function(){
         const inputs = serviceItem.querySelectorAll('.service-quantity, .service-price, .service-note, .service-user');
         const serviceId = serviceItem.querySelector('.service-checkbox').value;
         const priceInput = serviceItem.querySelector('.service-price');
-        
         inputs.forEach(input => {
             if (checkbox.checked) {
                 input.removeAttribute('disabled');
                 // Eğer fiyat input'u boşsa, servisin temel fiyatını ata
                 if (input === priceInput && !input.value) {
+
                     const service = @json($services->keyBy('id')->toArray());
                     if (service[serviceId]) {
+
                         input.value = service[serviceId].base_price;
                     }
                 }
@@ -188,8 +189,8 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
     <div class="col-12 col-lg-10 mx-auto">
         <x-adminlte-callout theme="light" title="Özet">
             <div class="d-flex flex-wrap justify-content-between">
-                <div><strong>Müşteri:</strong> {{ $appointment->customer->name }}</div>
-                <div><strong>Pet:</strong> {{ $appointment->pet->name }}</div>
+                <div><strong>Müşteri:</strong> {{ $appointment->customer->name }} <span class="badge bg-primary"> <i class="{{$appointment->customer->segment->icon ?? ''}}"></i> {{ $appointment->customer->segment->name ?? '' }}</span></div>
+                <div><strong>Pet:</strong> {{ $appointment->pet->name }} - {{ $appointment->pet->breed }}</div>
                 <div><strong>Planlanan:</strong> {{ optional($appointment->planned_at)->format('d.m.Y H:i') ?? '-' }}</div>
             </div>
         </x-adminlte-callout>
@@ -242,12 +243,39 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                         </div>
                         <div id="service-list" class="border rounded p-2" style="max-height: 400px; overflow:auto;">
                             @php($selectedServices = $appointment->services->pluck('id')->toArray())
-                            @foreach ($services as $service)
-                                @php($quantity = $appointment->services->find($service->id)->pivot->quantity ?? 1)
-                                @php($price = $appointment->services->find($service->id)->pivot->discounted_price ?? $service->base_price)
-                                @php($savedUserId[$service->id] = $appointment->services->find($service->id)->pivot->user_id ?? '')
-                                @php($savedUserName[$service->id] = $users->firstWhere('id', $savedUserId[$service->id])?->name ?? '')
+                          
+
                             
+                            @foreach ($services as $service)
+                            @php(
+                                    $pivot = $appointment->services->find($service->id)?->pivot
+                                )
+                                @php(
+                                    $quantity = $pivot->quantity ?? 1
+                                )
+                                @php(
+                                    $service->base_price = $service->breeds->firstWhere('id', $appointment->pet->breed_id)?->pivot->price ?? $service->base_price
+                                )
+                                @php(
+                                    $price = $pivot->discounted_price 
+                                        ?? ($appointment->customer->segment && isset($appointment->customer->segment->services)
+                                            ? ($appointment->customer->segment->services->firstWhere('id', $service->id)?->pivot->discount_percent
+                                                ? $service->base_price * (1 - $appointment->customer->segment->services->firstWhere('id', $service->id)->pivot->discount_percent / 100)
+                                                : $service->base_price)
+                                            : $service->base_price)
+                                )
+                                @php(
+                                    $savedUserId[$service->id] = $pivot->user_id ?? ''
+                                )
+                                @php(
+                                    $savedUserName[$service->id] = $users->firstWhere('id', $savedUserId[$service->id])?->name ?? ''
+                                )
+                                @php(
+                                    $discountPercent = $appointment->customer->segment && isset($appointment->customer->segment->services)
+                                        ? $appointment->customer->segment->services->firstWhere('id', $service->id)?->pivot->discount_percent
+                                        : null
+                                )
+                                
                                 <div class="service-item mb-3 p-2 border-bottom" data-service-id="{{ $service->id }}" data-service-name="{{ strtolower($service->name) }}">
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="custom-control custom-checkbox flex-grow-1">
@@ -295,6 +323,15 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                                                     <span class="input-group-text">₺</span>
                                                 </div>
                                             </div>
+                                            @if ($discountPercent && ($service->base_price) * (1 - $discountPercent / 100) == $price)
+                                                <small class="text-success d-block mt-1">
+                                                    %{{ $discountPercent }} {{ $appointment->customer->segment->name }} İndirimi Uygulandı
+                                                </small>
+                                            @elseif (($service->base_price) * (1 - $discountPercent / 100) != $price && !empty($discountPercent))
+                                                <small class="text-danger d-block mt-1">
+                                                      Farklı Fiyat Uyguladınız. {{ $appointment->customer->segment->name }} Segment Ücreti: ₺{{($service->base_price) * (1 - $discountPercent / 100)}}
+                                                </small>
+                                            @endif
                                         </div>
                                         
                                             <div class="col-12 col-md-3 mb-2 mb-md-0">
@@ -331,6 +368,12 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                                     </div>
                                 </div>
                             @endforeach
+                            
+                        </div>
+                        <div class="form-group row mt-2">
+                            <div class="col-sm-12">
+                                @include('appointments.partials.extra_items')
+                            </div>
                         </div>
                         @error('service_ids')
                             <div class="text-danger mt-1">{{ $message }}</div>
@@ -346,7 +389,9 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                         <button type="button" class="btn btn-secondary" @click="step=1">Geri</button>
                         <button type="button" class="btn btn-primary" @click="step=3">Devam</button>
                     </div>
+                
                 </x-adminlte-card>
+               
             </div>
 
             <div x-show="step===3" x-transition.opacity>

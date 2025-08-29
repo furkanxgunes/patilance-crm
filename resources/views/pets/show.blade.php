@@ -39,7 +39,7 @@
                             </tr>
                             <tr>
                                 <th>Irk</th>
-                                <td>{{ $pet->breed }}</td>
+                                <td>{{ $breed->name }}</td>
                             </tr>
                             <tr>
                                 <th>Cinsiyet</th>

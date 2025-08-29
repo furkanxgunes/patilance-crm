@@ -30,9 +30,10 @@
                     <div class="form-group row">
                         <label for="cp-input" class="col-sm-3 col-form-label">Müşteri & Evcil Hayvan</label>
                         <div class="col-sm-9 position-relative">
-                            <input type="text" id="cp-input" class="form-control" placeholder="Müşteri veya evcil hayvan ara..." autocomplete="off">
+                            <input type="text" id="cp-input" class="form-control" placeholder="Müşteri veya evcil hayvan ara..." autocomplete="off" disabled>
                             <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $appointment->customer_id) }}">
                             <input type="hidden" name="pet_id" id="pet_id" value="{{ old('pet_id', $appointment->pet_id) }}">
+                            <input type="hidden" name="breed_id" id="breed_id" value="{{ old('breed_id', $appointment->pet->breed_id) }}" disabled>
                             <div id="cp-results" class="list-group position-absolute w-100" style="z-index:1000; max-height: 240px; overflow:auto; display:none;"></div>
                             @error('customer_id')
                                 <div class="text-danger mt-1">{{ $message }}</div>
@@ -82,6 +83,7 @@
                                         $serviceNotes = [];
                                         $savedUserId = [];
                                         $savedUserName = [];
+                                            
                                         foreach ($appointment->services as $service) {
                                             
                                             $serviceQuantities[$service->id] = $service->pivot->quantity ?? 1;
@@ -95,6 +97,7 @@
                                 @endphp
                                 
                                 @foreach ($services as $service)
+                                @php $breedPrice = $service->breeds->find($appointment->pet->breed_id)->pivot->price ?? $service->base_price @endphp
                                     @php($isChecked = in_array($service->id, $selectedServices))
                                     <div class="service-item mb-3 p-2 border-bottom" data-service-id="{{ $service->id }}" data-service-name="{{ strtolower($service->name) }}">
                                         <div class="d-flex align-items-center mb-2">
@@ -137,7 +140,7 @@
                                                     class="form-control form-control-sm service-price" 
                                                     min="0" 
                                                     step="0.01"
-                                                    value="{{ $serviceDiscountedPrices[$service->id] ?? $service->base_price }}"
+                                                    value="{{ $serviceDiscountedPrices[$service->id] ?? $breedPrice }}"
                                                     {{ $isChecked ? '' : 'disabled' }}>
                                                    
                                                     <div class="input-group-append">
@@ -188,7 +191,12 @@
                             <small class="text-muted d-block mb-2">Hizmetleri seçin ve gerekli bilgileri girin. Fiyatlar otomatik olarak doldurulacaktır.</small>
                         </div>
                     </div>
-                    
+                    <div class="form-group row">
+                        <label for="extra_items" class="col-sm-3 col-form-label">Ek Hizmetler / Ürünler</label>
+                        <div class="col-sm-9">
+                            @include('appointments.partials.extra_items')
+                        </div>
+                    </div>
                     {{-- Notlar --}}
                     <div class="form-group row">
                         <label for="notes" class="col-sm-3 col-form-label">Notlar</label>
@@ -211,211 +219,218 @@
 @stop
 
 @push('js')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Birleşik müşteri-evcil hayvan arama
-            const cpInput = document.getElementById('cp-input');
-            const cpResults = document.getElementById('cp-results');
-            const userInput = document.getElementById('userInput');
-            const userResults = document.getElementById('userResults');
-            const hiddenCustomerId = document.getElementById('customer_id');
-            const hiddenPetId = document.getElementById('pet_id');
-            const hiddenUserId = document.getElementById('user_id');
-            const serviceSearch = document.getElementById('service-search');
-            const serviceList = document.getElementById('service-list');
-            const selectAllBtn = document.getElementById('select-all-services');
-            const clearAllBtn = document.getElementById('clear-all-services');
-
-            const customers = @json($customers);
-            const users = @json($users);
-            const options = [];
-            const optionsUser = [];
-            customers.forEach(c => {
-                (c.pets || []).forEach(p => {
-                    options.push({ label: `${c.name} — ${p.name}`, customer_id: c.id, pet_id: p.id });
-                });
-            });
-
-            function renderCpResults(items) {
-                cpResults.innerHTML = '';
-                
-                items.forEach(item => {
-                    const a = document.createElement('a');
-                    a.href = '#';
-                    a.className = 'list-group-item list-group-item-action';
-                    a.textContent = item.label;
-                    a.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        hiddenCustomerId.value = item.customer_id;
-                        hiddenPetId.value = item.pet_id;
-                        cpInput.value = item.label;
-                        cpResults.style.display = 'none';
-                    });
-                    cpResults.appendChild(a);
-                });
-                cpResults.style.display = items.length ? 'block' : 'none';
-            }
-            function filterOptions(q) {
-                const needle = q.trim().toLowerCase();
-                if (!needle) return options.slice(0, 50);
-                return options.filter(o => o.label.toLowerCase().includes(needle)).slice(0, 50);
-            }
-            if (cpInput) {
-                cpInput.addEventListener('input', function () { renderCpResults(filterOptions(cpInput.value)); });
-                cpInput.addEventListener('focus', function () { renderCpResults(filterOptions(cpInput.value)); });
-            }
-            document.addEventListener('click', function (e) {
-                if (!cpResults.contains(e.target) && e.target !== cpInput) { cpResults.style.display = 'none'; }
-            });
-            // Restore old selection
-            (function restoreOld() {
-                const oldCid = hiddenCustomerId.value;
-                const oldPid = hiddenPetId.value;
-                if (oldCid && oldPid) {
-                    const found = options.find(o => String(o.customer_id) === String(oldCid) && String(o.pet_id) === String(oldPid));
-                    if (found) cpInput.value = found.label;
-                }
-            })();
-
-            users.forEach(user => {
-                optionsUser.push({
-                    label: `${user.name}`,
-                    user_id: user.id,
-                });             
-            });
-
-          // Personel arama render fonksiyonu
-function renderUserResults(container, hiddenInput, textInput, items) {
-    container.innerHTML = '';
-    hiddenInput.value = '';
-    items.forEach(item => {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.className = `list-group-item list-group-item-action`;
-        a.innerHTML = item.name;
-        a.addEventListener('click', function (e) {
-            e.preventDefault();
-            hiddenInput.value = item.id;
-            textInput.value = item.name;
-            container.style.display = 'none';
-        });
-        container.appendChild(a);
-    });
-    container.style.display = items.length ? 'block' : 'none';
-}
-// Basit filtreleme
-function filterUsers(q) {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return users.slice(0, 30);
-    return users.filter(u => u.name.toLowerCase().includes(needle)).slice(0, 30);
-}
-// Tüm personel inputları için event bağla
-document.querySelectorAll('[id^="userInput"]').forEach(input => {
-    const serviceId = input.id.replace('userInput', '');
-    const results = document.getElementById('user-results' + serviceId);
-    const hidden = document.getElementById('user_id' + serviceId);
-
-    if(hidden.value) {
-        // Hidden doluysa input aktif et
-        input.removeAttribute('disabled');
-        // Display name
-        const user = users.find(u => String(u.id) === hidden.value);
-        if(user) input.value = user.name;
-    }
+@push('js')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customers = @json($customers);
+    const users = @json($users);
+    const appointment = @json($appointment);
+    const servicesData = @json($services->keyBy('id')->toArray());
+   
+    // DOM elemanları
+    const cpInput = document.getElementById('cp-input');
+    const cpResults = document.getElementById('cp-results');
+    const hiddenCustomerId = document.getElementById('customer_id');
+    const hiddenPetId = document.getElementById('pet_id');
+    const serviceList = document.getElementById('service-list');
+    const selectAllBtn = document.getElementById('select-all-services');
+    const clearAllBtn = document.getElementById('clear-all-services');
     
-    input.addEventListener('input', function () {
-        const list = filterUsers(input.value);
-        renderUserResults(results, hidden, input, list);
-    });
-
-    input.addEventListener('focus', function () {
-        const list = filterUsers(input.value);
-        renderUserResults(results, hidden, input, list);
-    });
-
-    // Dışarı tıklanınca kapat
-    document.addEventListener('click', function (e) {
-        if (!results.contains(e.target) && e.target !== input) {
-            results.style.display = 'none';
-        }
-    });
-});
-
-            // Hizmet seçildiğinde veya seçim kaldırıldığında input'ları aktif/pasif yap
-            function toggleQuantityInput(checkbox) {
-                const serviceItem = checkbox.closest('.service-item');
-                const inputs = serviceItem.querySelectorAll('.service-quantity, .service-price, .service-note, .service-user');
-                const serviceId = serviceItem.dataset.serviceId;
-                
-                inputs.forEach(input => {
-                    if (checkbox.checked) {
-                        input.removeAttribute('disabled');
-                        // Eğer fiyat input'u boşsa, servisin temel fiyatını ata
-                        if (input.classList.contains('service-price') && !input.value) {
-                            const service = @json($services->keyBy('id')->toArray());
-                            if (service[serviceId]) {
-                                input.value = service[serviceId].base_price;
-                            }
-                        }
-                    } else {
-                        input.setAttribute('disabled', 'disabled');
-                    }
-                });
-            }
-
-            // Sayfa yüklendiğinde seçili hizmetlerin input'larını aktif et ve fiyatları ayarla
-            document.querySelectorAll('.service-checkbox').forEach(checkbox => {
-                const serviceItem = checkbox.closest('.service-item');
-                const serviceId = serviceItem.dataset.serviceId;
-                const priceInput = serviceItem.querySelector('.service-price');
-                
-                // Eğer hizmet seçiliyse input'ları aktif et
-                if (checkbox.checked) {
-                    toggleQuantityInput(checkbox);
-                    
-                    // Eğer fiyat input'u boşsa, servisin temel fiyatını ata
-                    if (priceInput && !priceInput.value) {
-                        const service = @json($services->keyBy('id')->toArray());
-                        if (service[serviceId]) {
-                            priceInput.value = service[serviceId].base_price;
-                        }
-                    }
-                }
-                
-                // Change event'ini dinle
-                checkbox.addEventListener('change', function() {
-                    toggleQuantityInput(this);
-                });
-            });
-
-            // Hizmet arama filtresi
-            if (serviceSearch && serviceList) {
-                serviceSearch.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase();
-                    const serviceItems = serviceList.querySelectorAll('.service-item');
-                    
-                    serviceItems.forEach(item => {
-                        const serviceName = item.getAttribute('data-service-name');
-                        if (serviceName.includes(searchTerm)) {
-                            item.style.display = 'flex';
-                        } else {
-                            item.style.display = 'none';
-                        }
-                    });
-                });
-            }
-
-            // Select all/Clear all functions
-            function setAllServices(checked) {
-                serviceList.querySelectorAll('.service-checkbox').forEach(checkbox => {
-                    checkbox.checked = checked;
-                    // Trigger change event to update quantity inputs
-                    const event = new Event('change');
-                    checkbox.dispatchEvent(event);
-                });
-            }
-            if (selectAllBtn) { selectAllBtn.addEventListener('click', () => setAllServices(true)); }
-            if (clearAllBtn) { clearAllBtn.addEventListener('click', () => setAllServices(false)); }
+    // --- Müşteri-Evcil Hayvan Arama ---
+    const options = [];
+    customers.forEach(c => {
+       
+        (c.pets || []).forEach(p => {
+            options.push({ label: `${c.name} — ${p.name} - ${p.breed.name}`, customer_id: c.id, pet_id: p.id });
         });
-    </script>
+    });
+
+    function renderCpResults(items) {
+        cpResults.innerHTML = '';
+        items.forEach(item => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action';
+            a.textContent = item.label;
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                hiddenCustomerId.value = item.customer_id;
+                hiddenPetId.value = item.pet_id;
+                cpInput.value = item.label;
+                cpResults.style.display = 'none';
+                applySegmentPrices(item.customer_id);
+            });
+            cpResults.appendChild(a);
+        });
+        cpResults.style.display = items.length ? 'block' : 'none';
+    }
+
+    function filterOptions(q) {
+        const needle = q.trim().toLowerCase();
+        if (!needle) return options.slice(0, 50);
+        return options.filter(o => o.label.toLowerCase().includes(needle)).slice(0, 50);
+    }
+
+    if (cpInput) {
+        cpInput.addEventListener('input', function() { renderCpResults(filterOptions(cpInput.value)); });
+        cpInput.addEventListener('focus', function() { renderCpResults(filterOptions(cpInput.value)); });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!cpResults.contains(e.target) && e.target !== cpInput) cpResults.style.display = 'none';
+    });
+
+    // Restore old selection
+    (function restoreOld() {
+        const oldCid = hiddenCustomerId.value;
+        const oldPid = hiddenPetId.value;
+        if (oldCid && oldPid) {
+            const found = options.find(o => String(o.customer_id) === String(oldCid) && String(o.pet_id) === String(oldPid));
+            if (found) cpInput.value = found.label;
+        }
+    })();
+
+    // --- Personel Arama ---
+    function renderUserResults(container, hiddenInput, textInput, items) {
+        container.innerHTML = '';
+        hiddenInput.value = '';
+        items.forEach(item => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action';
+            a.innerHTML = item.name;
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                hiddenInput.value = item.id;
+                textInput.value = item.name;
+                container.style.display = 'none';
+            });
+            container.appendChild(a);
+        });
+        container.style.display = items.length ? 'block' : 'none';
+    }
+
+    function filterUsers(q) {
+        const needle = q.trim().toLowerCase();
+        if (!needle) return users.slice(0, 30);
+        return users.filter(u => u.name.toLowerCase().includes(needle)).slice(0, 30);
+    }
+
+    document.querySelectorAll('[id^="userInput"]').forEach(input => {
+        const serviceId = input.id.replace('userInput','');
+        const results = document.getElementById('user-results' + serviceId);
+        const hidden = document.getElementById('user_id' + serviceId);
+
+        if(hidden.value) {
+            input.removeAttribute('disabled');
+            const user = users.find(u => String(u.id) === hidden.value);
+            if(user) input.value = user.name;
+        }
+
+        input.addEventListener('input', function() {
+            const list = filterUsers(input.value);
+            renderUserResults(results, hidden, input, list);
+        });
+
+        input.addEventListener('focus', function() {
+            const list = filterUsers(input.value);
+            renderUserResults(results, hidden, input, list);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!results.contains(e.target) && e.target !== input) results.style.display = 'none';
+        });
+    });
+
+    // --- Hizmet Seçimi ve Input Aktifleştirme ---
+    function toggleQuantityInput(checkbox) {
+        const serviceItem = checkbox.closest('.service-item');
+        const inputs = serviceItem.querySelectorAll('.service-quantity, .service-price, .service-note, .service-user');
+        inputs.forEach(input => {
+            if (checkbox.checked) input.removeAttribute('disabled');
+            else input.setAttribute('disabled','disabled');
+        });
+    }
+
+    document.querySelectorAll('.service-checkbox').forEach(checkbox => {
+        if (checkbox.checked) toggleQuantityInput(checkbox);
+        checkbox.addEventListener('change', function(){ toggleQuantityInput(this); });
+    });
+
+    // --- Segment Fiyatlarını Uygula ---
+    function applySegmentPrices(customerId) {
+        const customer = customers.find(c => c.id == customerId);
+        if (!customer) return;
+
+
+
+        const segmentServices = (customer.segment && customer.segment.services) || [];
+
+        document.querySelectorAll('.service-item').forEach(item => {
+
+
+            const checkbox = item.querySelector('.service-checkbox');
+            
+            const serviceId = parseInt(item.dataset.serviceId);
+            const priceInput = item.querySelector('.service-price');
+            let label = item.querySelector('.discount-label');
+            if (!label) {
+                label = document.createElement('small');
+                label.className = 'text-success discount-label';
+                item.appendChild(label);
+            }
+
+            const discount = segmentServices.find(s => s.id == serviceId);
+            const discountedPivotPrice = parseInt(appointment.services.find(s => s.id == serviceId)?.pivot?.discounted_price);
+            if (discount && discount.pivot && discount.pivot.discount_percent) {
+                const basePrice = servicesData[serviceId].base_price;
+                const percent = discount.pivot.discount_percent;
+                const discountedSegmentPrice = basePrice * (100 - percent) / 100;
+                const discounted = !isNaN(discountedPivotPrice) && discountedPivotPrice != null ? discountedPivotPrice : discountedSegmentPrice;
+                const segmentName = customer.segment.name;
+                if (priceInput) priceInput.value = discounted.toFixed(2);
+                label.style.display = 'block';
+                if((discountedPivotPrice == discountedSegmentPrice && checkbox.checked) || discounted == discountedSegmentPrice){
+                    label.textContent = `%${percent} ${segmentName} İndirimi Uygulandı`;                 
+                }
+                else if(discountedPivotPrice != discountedSegmentPrice && checkbox.checked){
+                    label.textContent = `Farklı Fiyat Uyguladınız. ${segmentName} Segment Ücreti: ₺${discountedSegmentPrice}`;
+                }
+            }
+            
+            else {
+                if (priceInput) priceInput.value = priceInput.value ?? servicesData[serviceId].base_price;
+                label.style.display = 'none';
+                label.textContent = '';
+            }
+        });
+    }
+
+    // Sayfa yüklendiğinde mevcut müşteri varsa uygula
+    if (hiddenCustomerId.value) applySegmentPrices(hiddenCustomerId.value);
+
+    // --- Hizmet Arama ---
+    const serviceSearch = document.getElementById('service-search');
+    if(serviceSearch && serviceList) {
+        serviceSearch.addEventListener('input', function(){
+            const term = this.value.toLowerCase();
+            document.querySelectorAll('.service-item').forEach(item => {
+                const name = item.dataset.serviceName;
+                item.style.display = name.includes(term) ? 'flex' : 'none';
+            });
+        });
+    }
+
+    // --- Tümünü Seç / Temizle ---
+    function setAllServices(checked) {
+        serviceList.querySelectorAll('.service-checkbox').forEach(cb => {
+            cb.checked = checked;
+            cb.dispatchEvent(new Event('change'));
+        });
+    }
+    if(selectAllBtn) selectAllBtn.addEventListener('click', ()=>setAllServices(true));
+    if(clearAllBtn) clearAllBtn.addEventListener('click', ()=>setAllServices(false));
+});
+</script>
 @endpush
+

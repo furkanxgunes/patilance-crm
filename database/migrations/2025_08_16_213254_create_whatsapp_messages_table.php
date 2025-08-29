@@ -12,14 +12,14 @@ public function up()
 {
     Schema::create('whatsapp_messages', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('customer_id')->constrained()->onDelete('cascade');
+        $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
         $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null');
         $table->enum('type', [
             'appointment_created',
             'appointment_reminder',
             'checkin_confirmation',
             'checkout_confirmation',
-            'manual'
+            'manual'    
         ]);
         $table->text('content');
         $table->enum('status', [

@@ -5,11 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use App\Traits\LogsAllChanges; // kendi yazdığın trait
 class Service extends Model
 {
     use HasFactory; // <-- 2. EKLEME
+    use SoftDeletes;
+    use LogsAllChanges;
+    use LogsActivity;
 
+    protected $dates = ['deleted_at'];
     /**
      * The attributes that are mass assignable.
      *
@@ -53,6 +59,20 @@ class Service extends Model
     {
         return $this->belongsToMany(Appointment::class);
     }
-
+    
+    public function breeds()
+    {
+        return $this->belongsToMany(Breed::class, 'service_breed_prices')
+                    ->withPivot('price')
+                    ->withTimestamps();
+    }
+    
+    public function segmentDiscounts()
+    {
+        return $this->belongsToMany(Segment::class, 'segment_service_discounts')
+                    ->withPivot('discount_percent')
+                    ->withTimestamps();
+    }
+    
 
 }

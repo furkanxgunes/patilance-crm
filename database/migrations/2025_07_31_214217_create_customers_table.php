@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Concerns\SoftDeletes;
 
 return new class extends Migration
 {
@@ -19,6 +20,7 @@ return new class extends Migration
         $table->text('address')->nullable(); // Adres Bilgisi
         $table->text('notes')->nullable(); // Müşteri hakkında özel notlar
         $table->timestamps();
+        $table->softDeletes();
     });
 }
 

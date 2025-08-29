@@ -5,11 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\AppointmentStatus;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use App\Traits\LogsAllChanges; // kendi yazdığın trait
 
 class Appointment extends Model
 {
     use HasFactory;
+    use SoftDeletes;
+    use LogsAllChanges;
+    use LogsActivity;
 
+
+    protected $dates = ['deleted_at'];
     protected $dispatchesEvents = [
         'created' => null, // Bunu observer üzerinden yöneteceğiz
         'updated' => null  // Bunu da observer üzerinden yöneteceğiz
@@ -45,6 +53,10 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class);
     }
-
+    public function extraItems()
+    {
+        return $this->hasMany(AppointmentExtraItem::class);
+    }
+    
 }
 

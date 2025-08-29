@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use App\Traits\LogsAllChanges; // kendi yazdığın trait      
 class Pet extends Model
 {
     
-    use HasFactory;
+    use HasFactory, SoftDeletes, LogsAllChanges, LogsActivity;
 
+    protected $dates = ['deleted_at'];
     protected $fillable = [
         'customer_id', 
         'name',
@@ -26,6 +29,7 @@ class Pet extends Model
         'habits_toilet',
         'vaccines',
         'medications_text',
+        'breed_id',
     ];
 
 
@@ -37,5 +41,9 @@ class Pet extends Model
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+    public function breed()
+    {
+        return $this->belongsTo(Breed::class);
     }
 }

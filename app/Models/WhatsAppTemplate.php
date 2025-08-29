@@ -6,12 +6,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use App\Traits\LogsAllChanges; // kendi yazdığın trait
 class WhatsAppTemplate extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsAllChanges, LogsActivity;
     protected $table = 'whatsapp_templates';
 
+    protected $dates = ['deleted_at'];
     protected $fillable = [
         'name',
         'identifier',

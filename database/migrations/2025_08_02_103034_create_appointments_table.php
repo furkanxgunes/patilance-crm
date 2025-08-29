@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use App\Enums\AppointmentStatus;
+use Illuminate\Database\Eloquent\Concerns\SoftDeletes;
 
 return new class extends Migration
 {
@@ -14,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('appointments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('pet_id')->nullable()->constrained()->onDelete('set null');
             $table->date('checkin_at');
             $table->date('checkout_at')->nullable();
@@ -23,6 +24,7 @@ return new class extends Migration
       ->index();
             $table->text('notes')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Concerns\SoftDeletes;
 
 return new class extends Migration
 {
@@ -19,6 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('reserved_at')->nullable();
             $table->unsignedInteger('available_at');
             $table->unsignedInteger('created_at');
+            $table->softDeletes();
         });
 
         Schema::create('job_batches', function (Blueprint $table) {
@@ -31,7 +33,8 @@ return new class extends Migration
             $table->mediumText('options')->nullable();
             $table->integer('cancelled_at')->nullable();
             $table->integer('created_at');
-            $table->integer('finished_at')->nullable();
+                $table->integer('finished_at')->nullable();
+            $table->softDeletes();
         });
 
         Schema::create('failed_jobs', function (Blueprint $table) {
@@ -42,6 +45,7 @@ return new class extends Migration
             $table->longText('payload');
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
+            $table->softDeletes();
         });
     }
 

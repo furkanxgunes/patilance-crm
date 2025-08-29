@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use App\Models\Segment;
 
 class CustomerController extends Controller
 {
@@ -29,9 +30,10 @@ class CustomerController extends Controller
     /**
      * Show the form for creating a new resource.
      */public function create()
-{
-    return view('customers.create');
-}
+        {
+            $segments = Segment::all();
+            return view('customers.create', compact('segments'));
+        }
 
 public function store(Request $request)
 {
@@ -42,6 +44,7 @@ public function store(Request $request)
         'phone' => 'nullable|string|max:255|unique:customers',        
         'address' => 'nullable|string',
         'notes' => 'nullable|string',
+        'segment_id' => 'nullable|exists:segments,id',
     ]);
 
     // 2. Müşteriyi yarat
@@ -72,8 +75,8 @@ public function store(Request $request)
      */
     public function edit(Customer $customer)
     {
-        //
-            return view('customers.edit', compact('customer'));
+            $segments = Segment::all();
+            return view('customers.edit', compact('customer', 'segments'));
 
     }
 
@@ -89,8 +92,8 @@ public function store(Request $request)
         'phone' => 'nullable|string|max:255|unique:customers,phone,' . $customer->id,
         'address' => 'nullable|string',
         'notes' => 'nullable|string',
+        'segment_id' => 'nullable|exists:segments,id',
     ]);
-
     // 2. Müşteriyi güncelle
     $customer->update($request->all());
 

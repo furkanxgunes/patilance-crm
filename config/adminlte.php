@@ -363,13 +363,26 @@ return [
                 'url'  => 'customers/create', // veya 'route' => 'services.create'
                 'icon' => 'fas fa-fw fa-plus-circle',
             ],
+          
         ],
         ],
         [
+            'text' => 'Segment Yönetimi', // Ana menü başlığı
+            'url' => 'segments',
+            'icon' => 'fas fa-fw fa-layer-group',
+            // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
+            
+        ],
+        [
         'text' => 'Pet Yönetimi', // Ana menü başlığı
-        'icon' => 'fas fa-fw fa-dog',
+        'icon' => 'fas fa-fw fa-paw',
         // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
         'submenu' => [
+            [
+                'text' => 'Irk Tanımlama',
+                'url'  => 'breeds', // veya 'route' => 'services.index'
+                'icon' => 'fas fa-fw fa-dog',
+            ],
             [
                 'text' => 'Evcil Hayvanlar',
                 'url'  => 'pets', // veya 'route' => 'services.index'
@@ -554,7 +567,7 @@ return [
             ],
         ],
         'Sweetalert2' => [
-            'active' => false,
+            'active' => true,
             'files' => [
                 [
                     'type' => 'js',

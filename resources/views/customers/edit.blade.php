@@ -9,6 +9,7 @@
         <h1 class="mb-0">Müşteri Düzenle: {{ $customer->name }}</h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
+                
                 <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Ana Sayfa</a></li>
                 <li class="breadcrumb-item"><a href="{{ route('customers.index') }}">Müşteriler</a></li>
                 <li class="breadcrumb-item"><a href="{{ route('customers.show', $customer) }}">{{ $customer->name }}</a></li>
@@ -30,7 +31,6 @@
                     {{-- Müşteri Adı --}}
                     <x-adminlte-input name="name" label="Müşteri Adı" placeholder="Müşteri adını girin..."
                                       :value="old('name', $customer->name)" required />
-
                     {{-- Email --}}
                     <x-adminlte-input name="email" type="email" label="Email" placeholder="E-posta adresini girin..."
                                       :value="old('email', $customer->email)" required />
@@ -43,7 +43,17 @@
                     <x-adminlte-input name="address" label="Adres" placeholder="Adresi girin..."
                                       :value="old('address', $customer->address)" required />
 
-                    {{-- Notlar --}}
+                                    <label for="segment_id">Müşteri Segmenti</label>
+                                    <x-adminlte-select2 name="segment_id" label-class="text-primary" igroup-size="md">
+                                        <option value="">Seçiniz</option>
+                                        @foreach($segments as $segment)
+                                            <option value="{{ $segment->id }}"
+                                                {{ old('segment_id', $customer->segment_id ?? '') == $segment->id ? 'selected' : '' }}>
+                                                <i class="{{ $segment->icon }}"></i> {{ $segment->name }}
+                                            </option>
+                                        @endforeach
+                                    </x-adminlte-select2>
+                                                    {{-- Notlar --}}
                     <x-adminlte-text-editor name="notes" label="Notlar (İsteğe Bağlı)"
                                             placeholder="Müşteriyle ilgili notlarınızı yazın...">
                         {{ old('notes', $customer->notes) }}

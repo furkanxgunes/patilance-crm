@@ -24,8 +24,8 @@ return new class extends Migration
 
         Schema::create('campaign_service', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('campaign_id')->constrained()->onDelete('cascade');
-            $table->foreignId('service_id')->constrained()->onDelete('cascade');
+            $table->foreignId('campaign_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('service_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamps();
             
             $table->unique(['campaign_id', 'service_id']);

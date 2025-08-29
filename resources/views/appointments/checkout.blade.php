@@ -255,7 +255,7 @@ document.addEventListener('alpine:init', () => {
     <div class="col-12 col-lg-10 mx-auto">
         <x-adminlte-callout theme="light" title="Özet">
             <div class="d-flex flex-wrap justify-content-between">
-                <div><strong>Müşteri:</strong> {{ $appointment->customer->name }}</div>
+                <div><strong>Müşteri:</strong> {{ $appointment->customer->name }} <span class="badge bg-primary"> <i class="{{$appointment->customer->segment->icon ?? ''}}"></i> {{ $appointment->customer->segment->name ?? '' }}</span></div>
                 <div><strong>Pet:</strong> {{ $appointment->pet->name }}</div>
                 <div><strong>Check-in:</strong> {{ optional($appointment->checkin_at)->format('d.m.Y H:i') ?? '-' }}</div>
             </div>
@@ -307,7 +307,7 @@ document.addEventListener('alpine:init', () => {
             </div>
 
             <div x-show="step===2" x-transition.opacity>
-                <x-adminlte-card title="Hizmetler ve Fiyatlandırma" theme="primary" icon="fas fa-list">
+                <x-adminlte-card title="Hizmetler" theme="primary" icon="fas fa-list">
                     <div class="form-group">
                         <label>Hizmetler</label>
                         <div class="d-flex align-items-center mb-2">
@@ -317,11 +317,39 @@ document.addEventListener('alpine:init', () => {
                         </div>
                         <div id="service-list" class="border rounded p-2" style="max-height: 400px; overflow:auto;">
                             @php($selectedServices = $appointment->services->pluck('id')->toArray())
+                          
+
+                            
                             @foreach ($services as $service)
-                                @php($quantity = $appointment->services->find($service->id)->pivot->quantity ?? 1)
-                                @php($price = $appointment->services->find($service->id)->pivot->discounted_price ?? $service->base_price)
-                                @php($savedUserId[$service->id] = $appointment->services->find($service->id)->pivot->user_id ?? '')
-                                @php($savedUserName[$service->id] = $users->firstWhere('id', $savedUserId[$service->id])?->name ?? '')
+                            @php(
+                                    $pivot = $appointment->services->find($service->id)?->pivot
+                                )
+                                @php(
+                                        $quantity = $pivot->quantity ?? 1
+                                    )
+                                @php(
+                                    $service->base_price = $service->breeds->firstWhere('id', $appointment->pet->breed_id)?->pivot->price ?? $service->base_price
+                                )
+                                @php(
+                                    $price = $pivot->discounted_price 
+                                        ?? ($appointment->customer->segment && isset($appointment->customer->segment->services)
+                                            ? ($appointment->customer->segment->services->firstWhere('id', $service->id)?->pivot->discount_percent
+                                                ? $service->base_price * (1 - $appointment->customer->segment->services->firstWhere('id', $service->id)->pivot->discount_percent / 100)
+                                                : $service->base_price)
+                                            : $service->base_price)
+                                )
+                                @php(
+                                    $savedUserId[$service->id] = $pivot->user_id ?? ''
+                                )
+                                @php(
+                                    $savedUserName[$service->id] = $users->firstWhere('id', $savedUserId[$service->id])?->name ?? ''
+                                )
+                                @php(
+                                    $discountPercent = $appointment->customer->segment && isset($appointment->customer->segment->services)
+                                        ? $appointment->customer->segment->services->firstWhere('id', $service->id)?->pivot->discount_percent
+                                        : null
+                                )
+                            
                                 <div class="service-item mb-3 p-2 border-bottom" data-service-id="{{ $service->id }}" data-service-name="{{ strtolower($service->name) }}">
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="custom-control custom-checkbox flex-grow-1">
@@ -354,23 +382,33 @@ document.addEventListener('alpine:init', () => {
                                         </div>
                                         
                                         <div class="col-12 col-md-3 mb-2 mb-md-0">
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text">Fiyat</span>
+                                            <div class="input-group input-group-sm">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text">Fiyat</span>
+                                                </div>
+                                                <input type="number" 
+                                                       name="service_prices[{{ $service->id }}]" 
+                                                       class="form-control form-control-sm service-price" 
+                                                       min="0" 
+                                                       step="0.01"
+                                                       value="{{ old('service_prices.'.$service->id, $price) }}"
+                                                       {{ in_array($service->id, old('service_ids', $selectedServices)) ? '' : 'disabled' }}>
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">₺</span>
+                                                </div>
                                             </div>
-                                            <input type="number" 
-                                                   name="service_prices[{{ $service->id }}]" 
-                                                   class="form-control form-control-sm service-price" 
-                                                   min="0" 
-                                                   step="0.01"
-                                                   value="{{ old('service_prices.'.$service->id, $price) }}"
-                                                   {{ in_array($service->id, old('service_ids', $selectedServices)) ? '' : 'disabled' }}>
-                                            <div class="input-group-append">
-                                                <span class="input-group-text">₺</span>
-                                            </div>
+                                            @if ($discountPercent && ($service->base_price) * (1 - $discountPercent / 100) == $price)
+                                                <small class="text-success d-block mt-1">
+                                                    %{{ $discountPercent }} {{ $appointment->customer->segment->name }} İndirimi Uygulandı
+                                                </small>
+                                            @elseif (($service->base_price) * (1 - $discountPercent / 100) != $price && !empty($discountPercent))
+                                                <small class="text-danger d-block mt-1">
+                                                      Farklı Fiyat Uyguladınız. {{ $appointment->customer->segment->name }} Segment Ücreti: ₺{{($service->base_price) * (1 - $discountPercent / 100)}}
+                                                </small>
+                                            @endif
                                         </div>
-                                    </div>
-                                    <div class="col-12 col-md-3 mb-2 mb-md-0">
+                                        
+                                            <div class="col-12 col-md-3 mb-2 mb-md-0">
                                                 <div class="input-group input-group-sm">
                                                     <div class="input-group-prepend">
                                                         <span class="input-group-text">Personel</span>
@@ -405,13 +443,20 @@ document.addEventListener('alpine:init', () => {
                                 </div>
                             @endforeach
                         </div>
+                        <div class="form-group row mt-2">
+                            <div class="col-sm-12">
+                                @include('appointments.partials.extra_items')
+                            </div>
+                        </div>
                         @error('service_ids')
                             <div class="text-danger mt-1">{{ $message }}</div>
                         @enderror
                         @error('service_quantities.*')
-                            <div class="text-danger mt-1">Lütfen tüm seçili hizmetler için geçerli bir miktar girin.</div>
+                            <small class="text-muted d-block mb-2">Hizmetleri seçin ve gerekli bilgileri girin. Fiyatlar otomatik olarak doldurulacaktır.</small>
                         @enderror
-                        <small class="text-muted d-block mb-2">Hizmetleri seçin ve gerekli bilgileri girin.</small>
+                        @error('service_ids')
+                            <div class="text-danger mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-secondary" @click="step=1">Geri</button>

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('services', function (Blueprint $table) {
             $table->enum('unit', ['day', 'hour', 'session'])->default('hour')->after('category');
+            
         });
     }
 

@@ -36,6 +36,19 @@
 
                     {{-- Adres --}}
                     <x-adminlte-input name="address" label="Adres" placeholder="Adresi girin..." required />
+                    <div class="form-group">
+    <label for="segment_id">Müşteri Segmenti</label>
+    <x-adminlte-select2 name="segment_id" label-class="text-primary" igroup-size="md">
+        <option value="">Seçiniz</option>
+        @foreach(\App\Models\Segment::all() as $segment)
+            <option value="{{ $segment->id }}"
+                {{ old('segment_id', $customer->segment_id ?? '') == $segment->id ? 'selected' : '' }}>
+                <i class="{{ $segment->icon }}"></i> {{ $segment->name }}
+            </option>
+        @endforeach
+    </x-adminlte-select2>
+</div>
+
 
                     {{-- Notlar --}}
                     <x-adminlte-text-editor name="notes" label="Notlar (İsteğe Bağlı)" placeholder="Müşteriyle ilgili notlarınızı yazın..." />

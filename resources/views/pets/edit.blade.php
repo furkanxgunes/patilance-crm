@@ -67,8 +67,13 @@
             <div class="form-group row">
                 <label for="breed" class="col-sm-3 col-form-label">Irk</label>
                 <div class="col-sm-9">
-                    <input type="text" id="breed" name="breed" class="form-control" placeholder="Irkını girin..." value="{{ old('breed', $pet->breed) }}" />
-                    @error('breed')
+                <select name="breed_id" id="breed_id" class="form-control" required>
+                            @foreach($breeds as $breed)
+                                <option value="{{ $breed->id }}" {{ old('breed_id', $pet->breed_id) == $breed->id ? 'selected' : '' }}>
+                                    {{ $breed->name }}
+                                </option>
+                            @endforeach
+                        </select>                    @error('breed')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
                 </div>
