@@ -72,6 +72,10 @@ class BreedController extends Controller
      */
     public function destroy(Breed $breed)
     {
+        $this->authorize('delete-core'); // superadmin değilse 403 döner
+        if ($breed->pets()->exists()) {
+            return back()->withErrors('Bu ırk kullanımda, silinemez.');
+        }
         $breed->delete();
 
         return response()->json([

@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 use App\Providers\CustomUserProvider;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -31,5 +32,6 @@ class AuthServiceProvider extends ServiceProvider
         Validator::extend('email_or_username', function ($attribute, $value, $parameters, $validator) {
             return filter_var($value, FILTER_VALIDATE_EMAIL) || !preg_match('/[^a-z0-9_.]/i', $value);
         });
+        Gate::define('delete-core', fn($user) => $user->role === 'superadmin');
     }
 }

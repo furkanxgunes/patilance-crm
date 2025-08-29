@@ -23,4 +23,9 @@ class Breed extends Model
                     ->withPivot('price')
                     ->withTimestamps();
     }
+    public function pets()
+    {
+        return $this->hasMany(Pet::class); // pets.breed_id -> breeds.id
+    }
+
 }

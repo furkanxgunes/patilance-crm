@@ -63,9 +63,13 @@
                                     <td>{{ $pet->breed }}</td>
                                     <td>{{ $pet->age ?? 'N/A' }}</td>
                                     <td>
-                                        <a href="{{ route('customers.show', $pet->customer->id) }}" class="text-info">
-                                            {{ $pet->customer->name }}
-                                        </a>
+                                        @if ($pet->customer)
+                                            <a href="{{ route('customers.show', $pet->customer->id) }}" class="text-info">
+                                                {{ $pet->customer->name }}
+                                            </a>
+                                        @else
+                                            -
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         <a href="{{ route('pets.edit', $pet) }}" class="btn btn-sm btn-warning" title="Düzenle">

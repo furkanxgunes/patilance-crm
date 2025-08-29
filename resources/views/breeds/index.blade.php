@@ -63,9 +63,11 @@
                                     <button class="btn btn-sm btn-warning edit-breed" data-id="{{ $breed->id }}" title="Düzenle">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-danger delete-breed" data-id="{{ $breed->id }}" title="Sil">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    @can('delete-core')
+                                        <button class="btn btn-sm btn-danger delete-breed" data-id="{{ $breed->id }}" title="Sil">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    @endcan
                                 </td>
                             </tr>
                         @empty
@@ -223,7 +225,7 @@ $(function () {
                         } else {
                             Swal.fire(
                                 'Hata!',
-                                'Lütfen Sayfayı Yenileyin ve Tekrar Deneyin',
+                                'Bu Irk Silinemiyor, Tanımlı Olduğu Bir Evcil Hayvan Olabilir.',
                                 'error'
                             );
                         }
@@ -259,9 +261,11 @@ $(function () {
                     <button class="btn btn-sm btn-warning edit-breed" data-id="${breed.id}" title="Düzenle">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger delete-breed" data-id="${breed.id}" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    @can('delete-core')
+                        <button class="btn btn-sm btn-danger delete-breed" data-id="${breed.id}" title="Sil">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    @endcan
                 </td>
             </tr>
         `;
