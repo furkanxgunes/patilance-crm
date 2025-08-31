@@ -25,11 +25,13 @@
                         <td class="segment-name">{{ $segment->name }}</td>
                         <td>
                             <button class="btn btn-sm btn-warning btn-edit-segment">Düzenle</button>
+                            @can('delete-core')
                             <form action="{{ route('segments.destroy', $segment) }}" method="POST" class="d-inline delete-segment-form">
                                 @csrf
                                 @method('DELETE')
                                 <button type="button" class="btn btn-sm btn-danger btn-delete-segment">Sil</button>
                             </form>
+                            @endcan
                         </td>
                     </tr>
                     @endforeach

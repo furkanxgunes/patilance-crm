@@ -38,7 +38,7 @@
                     </div>
                 </div>
             </form>
-            <a href="{{ route('customers.create') }}" class="btn btn-primary">
+            <a href="{{ route('customers.create') }}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Yeni Müşteri Ekle
             </a>
         </div>
@@ -68,13 +68,7 @@
                                 <a href="{{ route('customers.edit', $customer) }}" class="btn btn-sm btn-warning" title="Düzenle">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" class="d-inline" onsubmit="return confirm('Bu müşteriyi silmek istediğinizden emin misiniz? Tüm randevuları ve pet bilgileri de silinebilir!');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Sil">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
+                           
                             </td>
                         </tr>
                     @empty

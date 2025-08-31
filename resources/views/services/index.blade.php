@@ -38,7 +38,7 @@
                     </div>
                 </div>
             </form>
-            <a href="{{ route('services.create') }}" class="btn btn-primary">
+            <a href="{{ route('services.create') }}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Yeni Hizmet Ekle
             </a>
         </div>
@@ -67,13 +67,7 @@
                                 <a href="{{ route('services.edit', $service) }}" class="btn btn-sm btn-warning" title="Düzenle">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form method="POST" action="{{ route('services.destroy', $service) }}" class="d-inline" onsubmit="return confirm('Bu hizmeti silmek istediğinizden emin misiniz?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Sil">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
+                               
                             </td>
                         </tr>
                     @empty

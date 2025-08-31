@@ -60,7 +60,7 @@ class AppointmentObserver
                 'is_dirty_status' => $appointment->isDirty('status')
             ]);
 
-            if ($appointment->isDirty('status')) {
+            if ($appointment->wasChanged('status')) {
                 Log::info('AppointmentObserver: Status değişikliği tespit edildi, event fırlatılıyor');
                 event(new AppointmentStatusChanged(
                     $appointment,

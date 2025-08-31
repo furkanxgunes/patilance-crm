@@ -208,10 +208,38 @@
                     <button type="submit" class="btn btn-warning">
                         <i class="fas fa-save"></i> Bilgileri Güncelle
                     </button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete({{ $pet->id }})">
+                        <i class="fas fa-trash"></i> Peti Sil
+                    </button>
                 </div>
             </div>
+            
                 </x-adminlte-card>
             </div>
         </div>
     </form>
+  
+    <form hidden id="deletePetForm-{{ $pet->id }}" method="POST" action="{{ route('pets.destroy', $pet) }}" class="d-inline">
+        @csrf
+        @method('DELETE')
+    </form>
 @stop
+
+<script>
+    function confirmDelete(petId) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu peti silmek istediğinizden emin misiniz? Tüm randevuları da silinebilir!",
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            console.log(result.value);
+            if (result.value) {
+                document.getElementById('deletePetForm-' + petId).submit();
+            }
+        })
+    }
+</script>

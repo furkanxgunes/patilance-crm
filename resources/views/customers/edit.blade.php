@@ -63,8 +63,32 @@
                         <x-adminlte-button type="submit" label="Müşteriyi Güncelle" theme="warning" icon="fas fa-save"/>
                     </div>
                 </form>
-
+                <form id="deleteCustomerForm-{{ $customer->id }}" method="POST" action="{{ route('customers.destroy', $customer) }}" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" class="btn btn-sm btn-danger" title="Sil" onclick="confirmDelete({{ $customer->id }})">
+                        <i class="fas fa-trash"></i> Müşteriyi Sil
+                    </button>
+                </form>
             </x-adminlte-card>
         </div>
     </div>
 @stop
+
+<script>
+    function confirmDelete(customerId) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu müşteriyi silmek istediğinizden emin misiniz? Tüm randevuları ve pet bilgileri de silinebilir!",
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.value) {
+                document.getElementById('deleteCustomerForm-' + customerId).submit();
+            }
+        })
+    }
+</script>

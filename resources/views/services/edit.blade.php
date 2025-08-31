@@ -109,11 +109,17 @@
             </div>
             <div class="d-end mt-3">
                     <x-adminlte-button type="submit" label="Hizmeti Güncelle" theme="warning" icon="fas fa-save"/>
+                    <x-adminlte-button type="button" label="Sil" theme="danger" icon="fas fa-trash" onclick="confirmDelete({{ $service->id }})"/>
+
                 </div>
             </form>
 
         </x-adminlte-card>
     </div>
+    <form hidden id="deleteServiceForm-{{ $service->id }}" method="POST" action="{{ route('services.destroy', $service) }}" class="d-inline">
+        @csrf
+        @method('DELETE')
+    </form>
 </div>
 
 @section('js')
@@ -124,6 +130,23 @@
             if(target) target.value = '';
         });
     });
+
+    function confirmDelete(serviceId) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu hizmeti silmek istediğinizden emin misiniz?",
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            console.log(result.valur);
+            if (result.value) {
+                document.getElementById('deleteServiceForm-' + serviceId).submit();
+            }
+        })
+    }
 </script>
 @stop
 

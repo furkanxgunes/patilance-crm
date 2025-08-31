@@ -1,5 +1,4 @@
-<?php 
-// app/Providers/EventServiceProvider.php
+<?php
 
 namespace App\Providers;
 
@@ -11,16 +10,18 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 
 class EventServiceProvider extends ServiceProvider
 {
+    // 1) EŞLEMEYİ AÇ
     protected $listen = [
         // AppointmentStatusChanged::class => [
         //     SendAppointmentWhatsAppNotification::class,
         // ],
     ];
 
+    // 2) OBSERVER BAĞLI KALSIN
     public function boot()
     {
-        parent::boot();
+        parent::boot(); // Modern Laravel’de genellikle gerekmez; kalsa da sorun değil.
         Appointment::observe(AppointmentObserver::class);
-
     }
+    
 }

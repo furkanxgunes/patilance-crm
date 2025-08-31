@@ -252,7 +252,7 @@ class WhatsAppService
             // storage/app/tmp/... -> public/storage/tmp/... dönüştür
             $relativePath = str_replace(storage_path('app'), '', $path);
             // return url("/pdf/" . basename($path));
-            $ngrokUrl = 'https://4d70e48184aa.ngrok-free.app';
+            $ngrokUrl = 'https://6c0f95a5c29a.ngrok-free.app';
             return $ngrokUrl . '/pdf/' . basename($path);
         }
 
