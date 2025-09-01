@@ -30,9 +30,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="username">Kullanıcı Adı <span class="text-danger">*</span></label>
+                    <label for="username">Kullanıcı Adı</label>
                     <input type="text" 
-                           class="form-control @error('username') is-invalid @enderror" 
+                           class="form-control" 
                            id="username" 
                            name="username" 
                            value="{{ old('username') }}" 
@@ -127,45 +127,3 @@
     </style>
 @stop
 
-@section('js')
-    <script>
-        $(document).ready(function() {
-            // Kullanıcı adı otomatik oluşturma
-            function generateUsername(name) {
-                return name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9ğüşıöç\s]/g, '') // Özel karakterleri kaldır
-                    .replace(/\s+/g, '.') // Boşlukları noktaya çevir
-                    .replace(/\.+/g, '.') // Ardışık noktaları tek noktaya çevir
-                    .replace(/\.$/, '') // Sondaki noktayı kaldır
-                    .replace(/[ğg]/g, 'g')
-                    .replace(/[üu]/g, 'u')
-                    .replace(/[şs]/g, 's')
-                    .replace(/[ıi]/g, 'i')
-                    .replace(/[öo]/g, 'o')
-                    .replace(/[çc]/g, 'c');
-            }
-
-            // İsim değiştiğinde kullanıcı adını güncelle
-            $('#name').on('input', function() {
-                let name = $(this).val().trim();
-                if (name) {
-                    $('#username').val(generateUsername(name));
-                } else {
-                    $('#username').val('');
-                }
-            });
-
-            // Form gönderilmeden önce kullanıcı adını kontrol et
-            $('form').on('submit', function() {
-                let username = $('#username').val();
-                if (!username) {
-                    let name = $('#name').val().trim();
-                    if (name) {
-                        $('#username').val(generateUsername(name));
-                    }
-                }
-            });
-        });
-    </script>
-@stop

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -14,7 +15,15 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::latest()->paginate(10);
+        $users = \App\Models\User::query()
+        ->where(function ($q) {
+            $q->where('role', '!=', 'superadmin')
+              ->orWhereNull('role'); // role null ise yine gözüksün
+        })
+        ->latest('id')
+        ->paginate(20)
+        ->withQueryString();
+
         return view('users.index', compact('users'));
     }
 
@@ -33,15 +42,22 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', 'unique:users'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', 'in:admin,personel'],
         ]);
+        
+        $username = $this->generateUsername($validated['name']);
+        $base = $username;
+        $i = 2;
+        while (User::where('username', $username)->exists()) {
+            $username = $base . $i;
+            $i++;
+        }
 
         User::create([
             'name' => $validated['name'],
-            'username' => $validated['username'],
+            'username' => $username,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
@@ -74,12 +90,6 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('users')->ignore($user->id),
-            ],
             'email' => [
                 'required',
                 'string',
@@ -90,11 +100,31 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', 'in:admin,personel'],
         ]);
+            // normalize ederek karşılaştır (boşluk/case farklılıklarını görmezden gel)
+    $newName = preg_replace('/\s+/', ' ', trim($validated['name']));
+    $oldName = preg_replace('/\s+/', ' ', trim((string)$user->name));
+     // SADECE isim değiştiyse username’i yeniden üret
+     if (mb_strtolower($newName) !== mb_strtolower($oldName)) {
+        // kuralın: "sceylin.kaya" / "furkan.gunes"
+        $base = $this->generateUsername($newName);
 
+        // inline çakışma çözümü (mevcut kullanıcı hariç)
+        $username = $base;
+        $i = 2;
+        while (
+            User::where('username', $username)
+                ->where('id', '!=', $user->id)
+                ->exists()
+        ) {
+            $username = $base . $i;
+            $i++;
+        }
+        $user->username = $username;
+    }
         $updateData = [
             'name' => $validated['name'],
-            'username' => $validated['username'],
             'email' => $validated['email'],
+            'username' => $user->username,
             'role' => $validated['role'],
         ];
 
@@ -124,4 +154,25 @@ class UserController extends Controller
         return redirect()->route('users.index')
             ->with('success', 'Kullanıcı başarıyla silindi.');
     }
+    private function generateUsername(string $fullName): string
+{
+    $parts = array_values(array_filter(explode(' ', preg_replace('/\s+/', ' ', trim($fullName)))));
+    $norm = fn ($s) => strtolower(Str::ascii($s));
+
+    if (count($parts) >= 3) {
+        $firstInitial = mb_substr($norm($parts[0]), 0, 1);
+        $second = $norm($parts[1]);
+        $last = $norm(end($parts));
+        return $firstInitial . $second . '.' . $last;
+    }
+
+    if (count($parts) === 2) {
+        $first = $norm($parts[0]);
+        $last  = $norm($parts[1]);
+        return $first . '.' . $last;
+    }
+
+    return $norm($parts[0] ?? 'user');
+}
+
 }
