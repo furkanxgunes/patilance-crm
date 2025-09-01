@@ -10,14 +10,23 @@ class BreedSeeder extends Seeder
     public function run(): void
     {
         $breeds = [
-            'Golden Retriever',
-            'Pomeranian',
-            'Kangal',
-            'German Shepherd',
-            'Bulldog',
-            'Labrador',
-            'Poodle',
+            'Toy Poodle',
             'Chihuahua',
+            'Maltese Terrier',
+            'Pomeranian Boo',
+            'Pug',
+            'French Bulldog',
+            'Bulldog',
+            'American Cocker',
+            'English Cocker',
+            'Beagle',
+            'Havanese',
+            'Minyatür Pinscher',
+            'Bichon Frise',
+            'Maltipoo',
+            'Dachshund',
+            'Papillon',
+            'Shih Tzu',
         ];
 
         foreach ($breeds as $breed) {

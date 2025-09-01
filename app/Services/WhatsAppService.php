@@ -20,113 +20,130 @@ class WhatsAppService
         $this->apiKey = config('services.whatsapp.api_key');
         $this->phoneNumberId = config('services.whatsapp.phone_number_id');
     }
-    public function sendMessageWithDocument(
-        string $phone,
-        string $caption,
-        string $documentPath,
-        string $templateName,
-        array $bodyParams = []
-    ): array {
-        try {
-            $phone = $this->formatPhoneNumber($phone);
-    
-            // Geçici link oluştur
-            $documentUrl = $this->getTemporaryUrl($documentPath);
-    
-            $components = [];
-    
-            // Header -> Document
+    protected function uploadMedia(string $filePath, string $mime = 'application/pdf'): array
+{
+    try {
+        if (!file_exists($filePath)) {
+            return ['success' => false, 'error' => 'File not found: '.$filePath];
+        }
+
+        $url = "https://graph.facebook.com/v22.0/{$this->phoneNumberId}/media";
+
+        // multipart/form-data (file upload)
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+        ])->asMultipart()->post($url, [
+            [ 'name' => 'messaging_product', 'contents' => 'whatsapp' ],
+            [ 'name' => 'type',              'contents' => $mime ],
+            [ 'name' => 'file',              'contents' => fopen($filePath, 'r'), 'filename' => basename($filePath) ],
+        ]);
+
+        $data = $response->json();
+
+        if ($response->successful() && isset($data['id'])) {
+            return ['success' => true, 'id' => $data['id'], 'response' => $data];
+        }
+
+        \Log::error('WhatsApp media upload failed', ['status' => $response->status(), 'response' => $data]);
+        return ['success' => false, 'error' => $data['error']['message'] ?? 'Upload failed', 'details' => $data];
+    } catch (\Exception $e) {
+        \Log::error('WhatsApp media upload exception', ['error' => $e->getMessage()]);
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+public function sendMessageWithDocument(
+    string $phone,
+    string $caption,
+    string $documentPath,
+    string $templateName,
+    array $bodyParams = []
+): array {
+    try {
+        $phone = $this->formatPhoneNumber($phone);
+
+        // 1) Önce PDF'i Meta'ya upload et
+        $upload = $this->uploadMedia($documentPath, 'application/pdf');
+
+        $components = [];
+
+        if ($upload['success'] ?? false) {
+            // Header -> Document by ID (en sağlam yöntem)
             $components[] = [
                 'type' => 'header',
-                'parameters' => [
-                    [
-                        'type' => 'document',
-                        'document' => [
-                            'link' => $documentUrl,
-                            'filename' => basename($documentPath),
-                        ],
+                'parameters' => [[
+                    'type' => 'document',
+                    'document' => [
+                        'id' => $upload['id'],
+                        // filename isteğe bağlı; template header paramda genelde gerekmez
+                        'filename' => basename($documentPath),
                     ],
-                ],
+                ]],
             ];
-    
-            // Body parametreleri
-            if (!empty($bodyParams)) {
-                $parameters = [];
-                foreach ($bodyParams as $param) {
-                    if (is_string($param) && trim($param) !== '') {
-                        $parameters[] = ['type' => 'text', 'text' => $param];
-                    }
-                }
-    
-                if (!empty($parameters)) {
-                    $components[] = [
-                        'type' => 'body',
-                        'parameters' => $parameters,
-                    ];
-                }
-            }
-    
-            $payload = [
-                'messaging_product' => 'whatsapp',
-                'to' => $phone,
-                'type' => 'template',
-                'template' => [
-                    'name' => $templateName,
-                    'language' => [
-                        'code' => 'en',
-                        'policy' => 'deterministic',
+        } else {
+            // Fallback: public URL (mevcut yöntem)
+            $documentUrl = $this->getTemporaryUrl($documentPath);
+            $components[] = [
+                'type' => 'header',
+                'parameters' => [[
+                    'type' => 'document',
+                    'document' => [
+                        'link' => $documentUrl,
+                        'filename' => basename($documentPath),
                     ],
-                    'components' => $components,
-                ],
-            ];
-    
-            $url = "https://graph.facebook.com/v22.0/{$this->phoneNumberId}/messages";
-    
-            Log::debug('WhatsApp Document Template Request', [
-                'url' => $url,
-                'payload' => $payload,
-            ]);
-    
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->post($url, $payload);
-    
-            $responseData = $response->json();
-    
-            if ($response->successful()) {
-                return [
-                    'success' => true,
-                    'response' => $responseData,
-                ];
-            }
-            Log::debug('WhatsApp API Yanıtı', [
-                'status' => $response->status(),
-                'response' => $responseData
-            ]);
-            Log::error('WhatsApp API Error', [
-                'status' => $response->status(),
-                'response' => $responseData,
-            ]);
-    
-            return [
-                'success' => false,
-                'error' => $responseData['error']['message'] ?? 'Bilinmeyen hata',
-                'details' => $responseData,
-            ];
-        } catch (\Exception $e) {
-            Log::error('WhatsApp document send error', [
-                'phone' => $phone,
-                'caption' => $caption,
-                'error' => $e->getMessage(),
-            ]);
-    
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
+                ]],
             ];
         }
+
+        // Body parametreleri
+        if (!empty($bodyParams)) {
+            $parameters = [];
+            foreach ($bodyParams as $param) {
+                if (is_string($param) && trim($param) !== '') {
+                    $parameters[] = ['type' => 'text', 'text' => $param];
+                }
+            }
+            if (!empty($parameters)) {
+                $components[] = ['type' => 'body', 'parameters' => $parameters];
+            }
+        }
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $phone,
+            'type' => 'template',
+            'template' => [
+                'name' => $templateName,
+                'language' => [ 'code' => 'en', 'policy' => 'deterministic' ],
+                'components' => $components,
+            ],
+        ];
+
+        $url = "https://graph.facebook.com/v22.0/{$this->phoneNumberId}/messages";
+
+        \Log::debug('WhatsApp Document Template Request', ['url' => $url, 'payload' => $payload]);
+
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type'  => 'application/json',
+        ])->post($url, $payload);
+
+        $responseData = $response->json();
+
+        if ($response->successful()) {
+            return ['success' => true, 'response' => $responseData];
+        }
+
+        \Log::error('WhatsApp API Error', ['status' => $response->status(), 'response' => $responseData]);
+        return [
+            'success' => false,
+            'error'   => $responseData['error']['message'] ?? 'Bilinmeyen hata',
+            'details' => $responseData,
+        ];
+    } catch (\Exception $e) {
+        \Log::error('WhatsApp document send error', ['phone' => $phone, 'caption' => $caption, 'error' => $e->getMessage()]);
+        return ['success' => false, 'error' => $e->getMessage()];
     }
+}
     
     public function sendMessage(string $to, string $message, string $templateName = null, array $templateParams = [])
     {
@@ -249,11 +266,15 @@ class WhatsAppService
          */
         protected function getTemporaryUrl(string $path): string
         {
-            // storage/app/tmp/... -> public/storage/tmp/... dönüştür
-            $relativePath = str_replace(storage_path('app'), '', $path);
-            // return url("/pdf/" . basename($path));
-            $ngrokUrl = 'https://6c0f95a5c29a.ngrok-free.app';
-            return $ngrokUrl . '/pdf/' . basename($path);
+            if (!is_file($path)) {
+                \Log::warning('getTemporaryUrl: file not found', ['path' => $path]);
+            }
+        
+            $base = rtrim(config('app.url'), '/');
+        
+            $filename = rawurlencode(basename($path));
+        
+            return "{$base}/pdf/{$filename}";
         }
 
 } 

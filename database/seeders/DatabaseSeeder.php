@@ -13,7 +13,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     { 
-        $this->call(WhatsAppTemplatesSeeder::class);
+        $this->call([
+            BreedSeeder::class,
+            WhatsAppTemplatesSeeder::class,
+        ]);
     }
     
 }   

@@ -346,6 +346,11 @@ return [
                 'url'  => 'services/create', // veya 'route' => 'services.create'
                 'icon' => 'fas fa-fw fa-plus-circle',
             ],
+            [
+                'text' => 'Irk Tanımlama',
+                'url'  => 'breeds', // veya 'route' => 'services.index'
+                'icon' => 'fas fa-fw fa-dog',
+            ],
         ],
         ],
         [
@@ -378,11 +383,7 @@ return [
         'icon' => 'fas fa-fw fa-paw',
         // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
         'submenu' => [
-            [
-                'text' => 'Irk Tanımlama',
-                'url'  => 'breeds', // veya 'route' => 'services.index'
-                'icon' => 'fas fa-fw fa-dog',
-            ],
+        
             [
                 'text' => 'Evcil Hayvanlar',
                 'url'  => 'pets', // veya 'route' => 'services.index'
@@ -412,23 +413,23 @@ return [
             ],
         ],
         ],
-        [
-            'text' => 'Kampanya Yönetimi', // Ana menü başlığı
-            'icon' => 'fas fa-percent',
-            // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
-            'submenu' => [
-                [
-                    'text' => 'Kampanyalar',
-                    'url'  => 'campaigns', // veya 'route' => 'services.index'
-                    'icon' => 'fas fa-fw fa-list',
-                ],
-                [
-                    'text' => 'Kampanya Oluştur',
-                    'url'  => 'campaigns/create', // veya 'route' => 'services.create'
-                    'icon' => 'fas fa-fw fa-plus-circle',
-                ],
-            ],
-        ],
+        // [
+        //     'text' => 'Kampanya Yönetimi', // Ana menü başlığı
+        //     'icon' => 'fas fa-percent',
+        //     // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
+        //     'submenu' => [
+        //         [
+        //             'text' => 'Kampanyalar',
+        //             'url'  => 'campaigns', // veya 'route' => 'services.index'
+        //             'icon' => 'fas fa-fw fa-list',
+        //         ],
+        //         [
+        //             'text' => 'Kampanya Oluştur',
+        //             'url'  => 'campaigns/create', // veya 'route' => 'services.create'
+        //             'icon' => 'fas fa-fw fa-plus-circle',
+        //         ],
+        //     ],
+        // ],
         [
             'text' => 'Kullanıcı Yönetimi', // Ana menü başlığı
             'icon' => 'fas fa-users',

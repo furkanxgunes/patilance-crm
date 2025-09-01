@@ -132,17 +132,13 @@
                                                 <i class="fas fa-sign-out-alt"></i> Check-out
                                             </a>
                                             <a href="{{ route('appointments.edit', $appointment) }}" class="btn btn-sm btn-warning ml-2"><i class="fas fa-cut"></i> Hizmet Ekle/Düzenle</a>
-                                        @else
-                                            <a href="{{ route('appointments.show', $appointment) }}" class="btn btn-sm btn-secondary"><i class="fas fa-eye"></i> Görüntüle</a>
+                                    
+                                            <a href="{{ route('appointments.show', $appointment) }}" class="btn btn-sm btn-secondary ml-2"><i class="fas fa-eye"></i> Randevu Detayları</a>
                                         @endif
                                         @if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN)
-                                            <a href="{{ route('appointments.delivery.pdf', $appointment) }}" class="btn btn-sm btn-outline-secondary ml-2" target="_blank">
-                                                <i class="fas fa-file-pdf"></i> Teslim Tutanağı
-                                            </a>
+                                           
                                         @elseif ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED)
-                                            <a href="{{ route('appointments.pdf', $appointment) }}" class="btn btn-sm btn-outline-secondary ml-2" target="_blank">
-                                                <i class="fas fa-file-pdf"></i> Randevu PDF
-                                            </a>
+                                        <a href="{{ route('appointments.show', $appointment) }}" class="btn btn-sm btn-secondary ml-2"><i class="fas fa-eye"></i> Randevu Detayları</a>
                                         @endif
                                     </td>
                                 </tr>
