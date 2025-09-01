@@ -35,7 +35,7 @@
                     <x-adminlte-input name="phone" type="tel" label="Telefon" placeholder="Telefon numarasını girin..." required />
 
                     {{-- Adres --}}
-                    <x-adminlte-input name="address" label="Adres" placeholder="Adresi girin..." required />
+                    <x-adminlte-input name="address" label="Adres" placeholder="Adresi girin..." />
                     <div class="form-group">
     <label for="segment_id">Müşteri Segmenti</label>
     <x-adminlte-select2 name="segment_id" label-class="text-primary" igroup-size="md">

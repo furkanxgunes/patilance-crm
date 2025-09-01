@@ -41,7 +41,7 @@
 
                     {{-- Adres --}}
                     <x-adminlte-input name="address" label="Adres" placeholder="Adresi girin..."
-                                      :value="old('address', $customer->address)" required />
+                                      :value="old('address', $customer->address)"  />
 
                                     <label for="segment_id">Müşteri Segmenti</label>
                                     <x-adminlte-select2 name="segment_id" label-class="text-primary" igroup-size="md">
