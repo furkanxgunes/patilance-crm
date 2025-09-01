@@ -29,7 +29,7 @@
                     <x-adminlte-input name="name" label="Müşteri Adı" placeholder="Müşteri adını girin..." required />
                     
                     {{-- Email --}}
-                    <x-adminlte-input name="email" type="email" label="Email" placeholder="E-posta adresini girin..." required />
+                    <x-adminlte-input name="email" type="email" label="Email" placeholder="E-posta adresini girin..." />
                     
                     {{-- Telefon --}}
                     <x-adminlte-input name="phone" type="tel" label="Telefon" placeholder="Telefon numarasını girin..." required />

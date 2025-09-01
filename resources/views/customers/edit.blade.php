@@ -33,7 +33,7 @@
                                       :value="old('name', $customer->name)" required />
                     {{-- Email --}}
                     <x-adminlte-input name="email" type="email" label="Email" placeholder="E-posta adresini girin..."
-                                      :value="old('email', $customer->email)" required />
+                                      :value="old('email', $customer->email)"  />
 
                     {{-- Telefon --}}
                     <x-adminlte-input name="phone" type="tel" label="Telefon" placeholder="Telefon numarasını girin..."

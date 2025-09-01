@@ -40,7 +40,7 @@ public function store(Request $request)
     // 1. Veriyi doğrula
     $request->validate([
         'name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:customers', // email benzersiz olmalı
+        'email' => 'nullable|string|email|max:255|unique:customers', // email benzersiz olmalı
         'phone' => 'nullable|string|max:255|unique:customers',        
         'address' => 'nullable|string',
         'notes' => 'nullable|string',
@@ -88,7 +88,7 @@ public function store(Request $request)
     // 1. Veriyi doğrula (email'in benzersizlik kontrolü güncellenen kişi hariç tutulmalı)
     $request->validate([
         'name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:customers,email,' . $customer->id,
+        'email' => 'nullable|string|email|max:255|unique:customers,email,' . $customer->id,
         'phone' => 'nullable|string|max:255|unique:customers,phone,' . $customer->id,
         'address' => 'nullable|string',
         'notes' => 'nullable|string',
