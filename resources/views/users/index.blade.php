@@ -62,22 +62,9 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if($user->id != auth()->id())
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-danger delete-user" 
-                                                    data-id="{{ $user->id }}"
-                                                    data-name="{{ $user->name }}"
-                                                    title="Sil"
-                                                    data-toggle="tooltip">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                         
                                         @else
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-secondary" 
-                                                    disabled
-                                                    title="Kendinizi silemezsiniz"
-                                                    data-toggle="tooltip">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                     
                                         @endif
                                     </div>
                                 </td>
