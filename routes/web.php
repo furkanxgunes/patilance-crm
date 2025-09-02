@@ -20,6 +20,8 @@ Route::get('/home', function () {
     return view('dashboard');
 });
 // Campaign routes
+Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
+
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -34,7 +36,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', App\Http\Controllers\UserController::class)->except(['show']);
 });
 
-Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 Route::middleware('auth')->group(function () {
 
