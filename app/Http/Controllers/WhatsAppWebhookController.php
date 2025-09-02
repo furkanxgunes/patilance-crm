@@ -10,6 +10,7 @@ class WhatsAppWebhookController extends Controller
 {
     public function handle(Request $request)
     {
+        
         // --- GET: Meta doğrulama ---
         if ($request->isMethod('get')) {
             $mode      = $request->query('hub.mode', $request->query('hub_mode'));
@@ -24,6 +25,12 @@ class WhatsAppWebhookController extends Controller
 
         // --- POST: her seferinde DB'ye bir "heartbeat" düş (tetikleniyor mu görelim) ---
         try {
+            \App\Models\WaMessageLog::create([
+                'direction' => 'status',
+                'status'    => 'raw_dump',
+                'raw'       => json_decode($request->getContent(), true),
+              ]);
+              
             \App\Models\WaMessageLog::create([
                 'direction'  => 'status',
                 'status'     => 'heartbeat',
