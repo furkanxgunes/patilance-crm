@@ -3,137 +3,110 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
+// Modeli yukarıda use etmene gerek yok, tam nitelikli adla da çağırıyoruz.
 class WhatsAppWebhookController extends Controller
 {
-    // .env: WHATSAPP_VERIFY_TOKEN=patilance123
-    // .env: WHATSAPP_APP_SECRET=... (opsiyonel, imza doğrulamak için)
-
     public function handle(Request $request)
     {
-        // 1) VERIFY (GET)
+        // --- GET: Meta doğrulama ---
         if ($request->isMethod('get')) {
-            $mode = $request->query('hub_mode') ?? $request->query('hub.mode');
-            $token = $request->query('hub_verify_token') ?? $request->query('hub.verify_token');
-            $challenge = $request->query('hub_challenge') ?? $request->query('hub.challenge');
+            $mode      = $request->query('hub.mode', $request->query('hub_mode'));
+            $token     = $request->query('hub.verify_token', $request->query('hub_verify_token'));
+            $challenge = $request->query('hub.challenge', $request->query('hub_challenge'));
 
-            if ($mode === 'subscribe' && $token === env('WHATSAPP_VERIFY_TOKEN')) {
-                return response($challenge, 200);
+            if ($mode === 'subscribe' && $token === config('services.whatsapp.verify_token')) {
+                return response($challenge, 200)->header('Content-Type', 'text/plain');
             }
-            return response('Forbidden', 403);
+            return response('Token mismatch', 403);
         }
 
-        // 2) OPTIONALLY: X-Hub-Signature-256 doğrulaması (tavsiye edilir)
-        // Meta dokümantasyonu: isteğin gövdesi HMAC-SHA256 ile app secret üzerinden imzalanır.
-        // İmza yanlışsa işlemeden 401 dönebilirsin.
-        $appSecret = env('WHATSAPP_APP_SECRET');
-        if ($appSecret) {
-            $signature = $request->header('X-Hub-Signature-256');
-            if (!$this->isValidSignature($request->getContent(), $signature, $appSecret)) {
-                Log::warning('WhatsApp webhook invalid signature');
-                return response('Invalid signature', 401);
-            }
-        }
-
-        // 3) PAYLOAD PARSE
-        $payload = $request->json()->all();
-        // Hızlı “heartbeat”/basic log:
-        $object = $payload['object'] ?? null; // genelde "whatsapp_business_account"
-        $entries = $payload['entry'] ?? [];
-
-        if (!$object || empty($entries)) {
-            $this->logWa('unknown', $payload, 'Payload object/entry missing');
-            return response('ok', 200);
-        }
-
-        foreach ($entries as $entry) {
-            $changes = $entry['changes'] ?? [];
-            foreach ($changes as $change) {
-                $value = $change['value'] ?? [];
-                $field = $change['field'] ?? null; // "messages" beklenir
-
-                // 3a) INBOUND MESSAGES
-                if (!empty($value['messages'])) {
-                    foreach ($value['messages'] as $msg) {
-                        $msgType = $msg['type'] ?? 'unknown';
-                        $from = $msg['from'] ?? null;
-                        $wamid = $msg['id'] ?? null;
-
-                        // text, image, document, audio vb. türleri kapsa
-                        $body = null;
-                        if ($msgType === 'text') {
-                            $body = $msg['text']['body'] ?? null;
-                        } elseif ($msgType === 'button') {
-                            $body = $msg['button']['text'] ?? null;
-                        } elseif ($msgType === 'interactive') {
-                            $body = $msg['interactive']['button_reply']['title']
-                                ?? $msg['interactive']['list_reply']['title']
-                                ?? null;
-                        } else {
-                            // Diğer türler için ham JSON’u kaydediyoruz
-                            $body = json_encode($msg);
-                        }
-
-                        $this->logWa('message_in', [
-                            'from' => $from,
-                            'wamid' => $wamid,
-                            'type' => $msgType,
-                            'body' => $body,
-                            'metadata' => $value['metadata'] ?? [],
-                        ], 'Inbound message');
-
-                        // İstersen burada job dispatch edip cevaplama/kuyruk yap.
-                    }
-                }
-
-                // 3b) STATUSES (delivered/read/failed vs.)
-                if (!empty($value['statuses'])) {
-                    foreach ($value['statuses'] as $status) {
-                        $this->logWa('status', $status, 'Message status');
-                    }
-                }
-
-                // 3c) ERRORS / EXCEPTIONS (nadir)
-                if (!empty($value['errors'])) {
-                    foreach (($value['errors'] ?? []) as $err) {
-                        $this->logWa('error', $err, 'Webhook error');
-                    }
-                }
-
-                // 3d) Hiçbiri değilse
-                if (empty($value['messages']) && empty($value['statuses']) && empty($value['errors'])) {
-                    $this->logWa('unknown', $value, 'No messages/statuses/errors in change');
-                }
-            }
-        }
-
-        return response('ok', 200);
-    }
-
-    private function logWa(string $kind, $data, string $note = null): void
-    {
+        // --- POST: her seferinde DB'ye bir "heartbeat" düş (tetikleniyor mu görelim) ---
         try {
-            DB::table('wa_message_logs')->insert([
-                'kind'       => $kind,                               // message_in | status | error | unknown | heartbeat
-                'note'       => $note,
-                'payload'    => is_string($data) ? $data : json_encode($data, JSON_UNESCAPED_UNICODE),
-                'created_at' => now(),
-                'updated_at' => now(),
+            \App\Models\WaMessageLog::create([
+                'direction'  => 'status',
+                'status'     => 'heartbeat',
+                'raw'        => ['received_at' => now()->toISOString()],
             ]);
         } catch (\Throwable $e) {
-            Log::error('wa_message_logs insert error: '.$e->getMessage());
+            // tablo yoksa/migration atılmadıysa 200 dönüp sessiz geç
         }
-    }
 
-    private function isValidSignature(string $rawBody, ?string $header, string $appSecret): bool
-    {
-        if (!$header || !str_starts_with($header, 'sha256=')) return false;
-        $sig = substr($header, 7);
-        $expected = hash_hmac('sha256', $rawBody, $appSecret);
-        // Meta ve GitHub benzeri webhooks için yöntem aynı: HMAC SHA256, sabit zamanlı karşılaştırma iyi olur
-        return hash_equals($expected, $sig);
+        try {
+            // --- İmza doğrulama (opsiyonel) ---
+            $sigHeader = $request->header('X-Hub-Signature-256');
+            $appSecret = config('services.whatsapp.app_secret');
+
+            if ($appSecret && $sigHeader) {
+                $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $appSecret, false);
+                if (!hash_equals($expected, $sigHeader)) {
+                    // İmzayı doğrulayamadık; yine de 200 dönelim, ama DB'ye not düşelim.
+                    \App\Models\WaMessageLog::create([
+                        'direction' => 'status',
+                        'status'    => 'signature_mismatch',
+                        'raw'       => ['header' => $sigHeader],
+                    ]);
+                    return response('OK', 200);
+                }
+            }
+
+            // --- Payload işleme ---
+            $payload = $request->all();
+
+            // WhatsApp tipik gövde: entry[0].changes[0].value
+            $value = $payload['entry'][0]['changes'][0]['value'] ?? null;
+
+            if (!$value) {
+                \App\Models\WaMessageLog::create([
+                    'direction' => 'status',
+                    'status'    => 'unknown_payload',
+                    'raw'       => $payload,
+                ]);
+                return response('OK', 200);
+            }
+
+            // 1) Gelen mesajlar (inbound)
+            if (!empty($value['messages'])) {
+                foreach ($value['messages'] as $msg) {
+                    $type = $msg['type'] ?? null;
+                    \App\Models\WaMessageLog::create([
+                        'direction'  => 'inbound',
+                        'wa_id'      => $msg['from'] ?? null,
+                        'message_id' => $msg['id'] ?? null,
+                        'type'       => $type,
+                        'body'       => $type === 'text' ? ($msg['text']['body'] ?? null) : null,
+                        'status'     => null,
+                        'raw'        => $msg,
+                    ]);
+                }
+            }
+
+            // 2) Durumlar (sent/delivered/read/failed)
+            if (!empty($value['statuses'])) {
+                foreach ($value['statuses'] as $st) {
+                    \App\Models\WaMessageLog::create([
+                        'direction'  => 'status',
+                        'wa_id'      => $st['recipient_id'] ?? null,
+                        'message_id' => $st['id'] ?? null,
+                        'type'       => 'status',
+                        'status'     => $st['status'] ?? null,
+                        'raw'        => $st,
+                    ]);
+                }
+            }
+
+            return response('OK', Response::HTTP_OK);
+        } catch (\Throwable $e) {
+            // Hiçbir durumda 500 dönmeyelim; hatayı DB'ye not düş.
+            try {
+                \App\Models\WaMessageLog::create([
+                    'direction' => 'status',
+                    'status'    => 'handler_error',
+                    'raw'       => ['exception' => $e->getMessage()],
+                ]);
+            } catch (\Throwable $ignored) {}
+            return response('OK', 200);
+        }
     }
 }
