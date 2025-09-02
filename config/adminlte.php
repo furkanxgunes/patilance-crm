@@ -63,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>**</b>',
+    'logo' => '<b style="visibility: hidden;">Patilance CRM</b>',
     'logo_img' => 'vendor/adminlte/dist/img/patilance_logo.png',
     'logo_img_class' => 'brand-image img',
     'logo_img_xl' => null,
