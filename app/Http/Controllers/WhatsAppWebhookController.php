@@ -10,7 +10,10 @@ class WhatsAppWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        Log::info($request->query());
+        Log::info('WA headers', $request->headers->all());
+Log::info('WA raw', ['raw' => $request->getContent()]);
+Log::info('WA parsed', $request->all());
+ 
         // --- GET: Meta doğrulama ---
         if ($request->isMethod('get')) {
             $mode      = $request->query('hub.mode', $request->query('hub_mode'));
