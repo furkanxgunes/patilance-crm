@@ -7,12 +7,30 @@
 @stop
 
 @section('content')
-
+<style>
+        /* Simple pagination styles */
+        .pagination {
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .pagination .page-link {
+            padding: 0.25rem 0.5rem;
+            min-width: 32px;
+            text-align: center;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #3490dc;
+            border-color: #3490dc;
+        }
+    </style>
     <div class="card">
         <div class="card-header">
             <button type="button" class="btn btn-primary" id="addBreedBtn">
                 <i class="fas fa-plus"></i> Yeni Ekle
             </button>
+            
         </div>
         
         <div class="card-body">
@@ -48,7 +66,16 @@
 
             <!-- Breeds Table -->
             <div class="table-responsive">
-                <table class="table table-bordered table-striped">
+            <form method="GET" action="{{ route('breeds.index') }}" class="form-inline">
+                <div class="input-group">
+                    <input type="text" name="q" value="{{ $q ?? '' }}" class="form-control" placeholder="İsim, e-posta, telefon ara...">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                        <a href="{{ route('breeds.index') }}" class="btn btn-outline-light">Temizle</a>
+                    </div>
+                </div>
+            </form>
+                <table class="table table-bordered table-striped mt-2">
                     <thead>
                         <tr>
                             <th>Irk Adı</th>
@@ -78,6 +105,11 @@
                     </tbody>
                 </table>
             </div>
+            @if($breeds->hasPages())
+            <div class="mt-3 d-flex justify-content-center">
+                {{ $breeds->onEachSide(1)->links('pagination::bootstrap-4') }}
+            </div>
+        @endif
         </div>
     </div>
 @stop

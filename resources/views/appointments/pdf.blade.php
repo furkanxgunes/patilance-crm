@@ -44,11 +44,6 @@
         </div>
     </div>
 
-    <div class="mb-16">
-        <strong>Durum:</strong>
-        <span class="badge">{{ ucfirst(__($appointment->status->value ?? (string)$appointment->status)) }}</span>
-    </div>
-
     <h2>Hizmetler</h2>
     <table>
     <thead class="bg-light">

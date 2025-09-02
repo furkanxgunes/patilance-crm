@@ -21,7 +21,6 @@
         .pagination {
             justify-content: center;
             margin: 1rem 0;
-        }
         
         .pagination .page-link {
             padding: 0.25rem 0.5rem;
@@ -103,17 +102,34 @@
                                             <span>-</span>
                                         @endif
                                     </td>
-                                    <td>{{ \Carbon\Carbon::parse($appointment->checkin_at)->format('d.m.Y') }}</td>
+                                    <td>{{ optional($appointment->checkin_at)->format('d.m.Y H:i') ?? optional($appointment->planned_at)->format('d.m.Y H:i') }}</td>
                                     <td>
                                         @php
                                             $theme = 'secondary';
-                                            if ($appointment->status === \App\Enums\AppointmentStatus::SCHEDULED) $theme = 'info';
-                                            if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN) $theme = 'warning';
-                                            if ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED) $theme = 'success';
-                                            if ($appointment->status === \App\Enums\AppointmentStatus::CANCELLED) $theme = 'danger';
+                                            $value = '';
+                                            if ($appointment->status === \App\Enums\AppointmentStatus::SCHEDULED)
+                                            {
+                                                $theme = 'info';
+                                                $value = 'Planladı';
+                                            }
+                                            if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN)
+                                            {
+                                                $theme = 'warning';
+                                                $value = 'Giriş Yaptı';
+                                            }
+                                            if ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED)
+                                            {
+                                                $theme = 'success';
+                                                $value = 'Tamamlandı';
+                                            }
+                                            if ($appointment->status === \App\Enums\AppointmentStatus::CANCELLED)
+                                            {
+                                                $theme = 'danger';
+                                                $value = 'İptal Edildi';
+                                            }
                                         @endphp
-                                        <span class="badge badge-{{ $theme }}">
-                                            {{ __( $appointment->status->value) }}
+                                        <span class="badge badge-{{ $theme }}" data-value="{{ $value }}">
+                                            {{ $value }}
                                         </span>
                                     </td>
                                     <td class="text-center d-flex justify-content-around align-items-center">

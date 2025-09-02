@@ -11,10 +11,18 @@ class BreedController extends Controller
     /**
      * Display the breeds management page.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $breeds = Breed::orderBy('name')->get();
-        return view('breeds.index', compact('breeds'));
+        $q = $request->string('q')->toString();
+        $breeds = Breed::query()
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq->where('name', 'like', "%{$q}%");
+                });
+            })
+            ->paginate(15)
+            ->withQueryString();
+        return view('breeds.index', compact('breeds', 'q'));
     }
 
     /**

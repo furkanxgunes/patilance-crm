@@ -213,7 +213,7 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="checkin_at">Check-in Tarih ve Saat</label>
-                                <input type="datetime-local" class="form-control" id="checkin_at" name="checkin_at"value="{{ optional($appointment->checkin_at)->format('d.m.Y H:i') }}"  required>
+                                <input type="datetime-local" class="form-control" id="checkin_at" name="checkin_at"value="{{ optional($appointment->checkin_at)->format('Y-m-d\TH:i') ?? optional($appointment->planned_at)->format('Y-m-d\TH:i') }}"  required>
                                 @error('checkin_at')
                                     <div class="text-danger mt-1">{{ $message }}</div>
                                 @enderror
@@ -395,6 +395,16 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
             </div>
 
             <div x-show="step===3" x-transition.opacity>
+                @if ($lastNote)
+                <div id="last-note-box" class="alert alert-secondary mt-2">
+                        <strong>Önceki Not:</strong>
+                    
+                        <div id="last-note-text" class="mt-1">{{ $lastNote }}</div>
+                        <small id="last-note-date"></small>
+                    </div>
+                <div id="last-note-empty" class="text-muted mt-2" style="display:none;">Not bulunamadı.</div>
+                @endif
+                
                 <x-adminlte-card title="Sahip Notları / Özel İstekler" theme="primary" icon="fas fa-sticky-note">
                     <x-adminlte-text-editor name="owner_requests" id="owner_requests" label="Notlar" placeholder="Notlarınızı yazınız...">
                         {{ old('owner_requests', $appointment->owner_requests) ?: "•Barındırılacağı Koşullar:<br>•Yiyecek Temini, Saatleri:<br>•Verilecek İlaç, Vitamin, Mineral:<br>•Acil Durumda Başvurulacak Veteriner Hekim:<br>•Verilecek Eğitimler:" }}
@@ -412,6 +422,16 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
             <div x-show="step===4" x-transition.opacity>
                 <x-adminlte-card title="Onay" theme="success" icon="fas fa-check">
                     <p>Check-in işlemini tamamlamak üzeresiniz. Zaman, hizmetler ve notlar kaydedilecektir.</p>
+                    {{-- WhatsApp Bildirim --}}
+                    <div class="form-group row">
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="send_notification_checkin" name="send_notification_checkin" value="1" checked>
+                                <label class="custom-control-label" for="send_notification_checkin">Müşteriye WhatsApp ile bildirim gönder</label>
+                                <small class="form-text text-muted">Giriş yapıldığına dair müşteriye otomatik WhatsApp bildirimi gönderilir.</small>
+                            </div>
+                        </div>  
+                    </div>
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-secondary" @click="step=3">Geri</button>
                         <button type="submit" class="btn btn-success">Check-in'i Tamamla</button>

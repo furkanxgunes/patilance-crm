@@ -32,6 +32,8 @@ class Appointment extends Model
         'checkin_at' => 'datetime',
         'checkout_at' => 'datetime',
         'send_notification' => 'boolean',
+        'send_notification_checkin' => 'boolean',
+        'send_notification_checkout' => 'boolean',
     ];
     public function customer()
     {
@@ -57,6 +59,6 @@ class Appointment extends Model
     {
         return $this->hasMany(AppointmentExtraItem::class);
     }
-    
+
 }
 

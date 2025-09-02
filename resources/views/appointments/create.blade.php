@@ -140,7 +140,15 @@
                     </div>
 
                     {{-- Notlar --}}
-                    <div class="form-group row">
+
+                    <div id="last-note-box" style="display:none;" class="alert alert-secondary mt-2">
+                        <strong>Önceki Not:</strong>
+                        <div id="last-note-text" class="mt-1"></div>
+                        <small id="last-note-date"></small>
+                    </div>
+                    <div id="last-note-empty" class="text-muted mt-2" style="display:none;">Not bulunamadı.</div>
+
+                     <div class="form-group row">
                         <label for="notes" class="col-sm-3 col-form-label">Notlar</label>
                         <div class="col-sm-9">
                             <textarea name="notes" id="notes" rows="4" class="form-control" placeholder="Randevu ile ilgili notlar...">{{ old('notes') }}</textarea>
@@ -229,8 +237,20 @@
                 const customer = customers.find(c => String(c.id) === String(customerId));
                 serviceItems.forEach(item => {
                     const serviceId = item.getAttribute('data-service-id');
-                    const breedPrice = parseFloat(services.find(s => s.id == serviceId).breeds.find(b => b.id == breedId).pivot.price) ?? null; // IRK FİYATI BURADA ÇEKİLİYOR
                     const priceInput = item.querySelector('.service-price');
+                    // get find breed price and check empty control 
+                    const firstPrice = services.find(s => s.id == serviceId)
+                        ?.breeds.find(b => b.id == breedId)
+                        ?.pivot?.price ?? null; 
+
+                    if(firstPrice){
+                        breedPrice =  parseFloat(firstPrice) ? parseFloat(firstPrice) : priceInput.dataset.basePrice; // IRK FİYATI BURADA ÇEKİLİYOR
+                    }   
+                    else{
+                        breedPrice = parseFloat(priceInput.dataset.basePrice);
+                    }
+                       
+                   
                     if(breedPrice != priceInput.dataset.basePrice){
                         priceInput.dataset.basePrice = breedPrice;
                     }
@@ -262,6 +282,7 @@
                 cpInput.value = item.label;
                 cpResults.style.display = 'none';
                 applySegmentPrices(item.customer_id,item.breed_id); // segment fiyatlarını uygula
+                fetchLastNote(item.customer_id);
 
 
             }
@@ -447,5 +468,57 @@
             })();
 
     });
+async function fetchLastNote(customerId) {
+  const box   = document.getElementById('last-note-box');
+  const empty = document.getElementById('last-note-empty');
+  const textEl= document.getElementById('last-note-text');
+  const dateEl= document.getElementById('last-note-date');
+
+  box.style.display = 'none';
+  empty.style.display = 'none';
+
+  try {
+    const res = await fetch("{{ route('appointments.lastNote') }}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ customer_id: customerId })
+    });
+
+    // CEVABI SADECE BİR KEZ OKU
+    const contentType = res.headers.get('content-type') || '';
+    const raw = await res.text();
+
+    let data;
+    if (contentType.includes('application/json')) {
+      try { data = JSON.parse(raw); }
+      catch { console.error('JSON parse error:', raw); data = { found: false }; }
+    } else {
+      console.error('Non-JSON response:', raw); // muhtemelen HTML hata sayfası (500/419 vs.)
+      data = { found: false };
+    }
+
+    if (!res.ok) {
+      // 4xx/5xx ama JSON döndüyse bile UI'yi kırma
+      console.error('HTTP error', res.status, data);
+      data = { found: false };
+    }
+
+    if (!data.found) {
+      return;
+    }
+
+    textEl.textContent = data.notes || '';
+    dateEl.textContent = data.planned_at ? `Tarih: ${data.planned_at}` : '';
+    box.style.display = 'block';
+  } catch (err) {
+    console.error('fetchLastNote error:', err);
+    empty.textContent = "Not bilgisi alınamadı.";
+  }
+}
+
     </script> 
 @endpush

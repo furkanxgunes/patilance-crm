@@ -27,9 +27,7 @@
                 <form method="POST" action="{{ route('customers.update', $customer) }}">
                     @csrf
                     @method('PUT')
-                    {{-- add x-adminlte-input for segment_id --}}
-                    <x-adminlte-input name="segment_id" label="Müşteri Segmenti" placeholder="Müşteri segmentini girin..."
-                                      :value="old('segment_id', $customer->segment_id)" required />
+ 
 
                     {{-- Müşteri Adı --}}
                     <x-adminlte-input name="name" label="Müşteri Adı" placeholder="Müşteri adını girin..."

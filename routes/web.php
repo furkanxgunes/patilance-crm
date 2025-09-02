@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SegmentController;
@@ -108,8 +109,10 @@ Route::prefix('segments')->name('segments.')->group(function () {
     Route::get('/{segment}/services/json', [SegmentController::class, 'getServicesJson']);
 });
 
-    // Breed Management
-  
+
+    Route::post('/appointments/last-note', [AppointmentController::class, 'getLastNote'])
+        ->name('appointments.lastNote');
+
 
 });
 

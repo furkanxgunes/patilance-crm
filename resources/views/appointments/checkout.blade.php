@@ -468,6 +468,16 @@ document.addEventListener('alpine:init', () => {
             <div x-show="step===3" x-transition.opacity>
                 <x-adminlte-card title="Onay" theme="success" icon="fas fa-check">
                     <p>Check-out işlemini tamamlamak üzeresiniz. Hizmet fiyatları ve adetler kaydedilecektir.</p>
+                    {{-- WhatsApp Bildirim --}}
+                    <div class="form-group row">
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="send_notification_checkout" name="send_notification_checkout" value="1" checked>
+                                <label class="custom-control-label" for="send_notification_checkout">Müşteriye WhatsApp ile bildirim gönder</label>
+                                <small class="form-text text-muted">Giriş yapıldığına dair müşteriye otomatik WhatsApp bildirimi gönderilir.</small>
+                            </div>
+                        </div>  
+                    </div>
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-secondary" @click="prevStep">Geri</button>
                         <button type="submit" class="btn btn-success">Check-out'u Tamamla</button>

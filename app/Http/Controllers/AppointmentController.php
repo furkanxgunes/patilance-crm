@@ -34,8 +34,7 @@ class AppointmentController extends Controller
             ->when($status, function ($qBuilder) use ($status) {
                 $qBuilder->where('status', $status);
             })
-            ->latest();
-
+            ->orderBy('planned_at');
         $appointments = $query->paginate(10)->withQueryString();
         $statuses = AppointmentStatus::cases();
         return view('appointments.index', compact('appointments', 'statuses', 'q', 'status'));
@@ -44,6 +43,47 @@ class AppointmentController extends Controller
     /**
      * Show the form for creating a new resource.
      */
+    public function getLastNote(Request $request)
+    {
+        try {
+            $request->validate([
+                'customer_id' => 'required|integer|exists:customers,id',
+            ]);
+    
+            $last = Appointment::where('customer_id', $request->customer_id)
+                ->whereNotNull('notes')
+                ->where('notes', '<>', '')
+                ->orderByDesc('planned_at')   // yoksa created_at
+                ->orderByDesc('id')
+                ->first();
+    
+            if (!$last) {
+                return response()->json(['found' => false]); // 200
+            }
+    
+            $plannedAt = null;
+            if (!empty($last->planned_at)) {
+                $plannedAt = $last->planned_at instanceof \Illuminate\Support\Carbon
+                    ? $last->planned_at->format('d.m.Y H:i')
+                    : Carbon::parse($last->planned_at)->format('d.m.Y H:i');
+            }
+    
+            return response()->json([
+                'found'          => true,
+                'appointment_id' => $last->id,
+                'notes'          => $last->notes,
+                'planned_at'     => $plannedAt,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('appointments.lastNote error', [
+                'customer_id' => $request->input('customer_id'),
+                'msg'  => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return response()->json(['found' => false]); // 200 ile dön → front kırılmaz
+        }
+    }
     public function create()
     {
         $customers = \App\Models\Customer::with([
@@ -62,6 +102,7 @@ class AppointmentController extends Controller
             $q->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::CHECKED_IN]);
         })->pluck('id')->toArray();
         
+    
         
         $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
@@ -78,6 +119,8 @@ class AppointmentController extends Controller
             $customerSegments[$customer->id] = $discounts;
         }
     }
+    
+
         return view('appointments.create', compact(
             'customers', 
             'services', 
@@ -115,6 +158,8 @@ class AppointmentController extends Controller
             'checkout_at' => 'nullable|date_format:Y-m-d\\TH:i|after:checkin_at',
             'notes' => 'nullable|string',
             'send_notification' => 'nullable|integer',
+            'send_notification_checkin' => 'nullable|integer',
+            'send_notification_checkout' => 'nullable|integer',
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
             'service_quantities' => 'required|array',
@@ -138,6 +183,8 @@ class AppointmentController extends Controller
                 'planned_at' => $validated['planned_at'],
                 'planned_exit' => $validated['planned_exit'],
                 'send_notification' => $validated['send_notification'] ?? 0,
+                'send_notification_checkin' => $validated['send_notification_checkin'] ?? 0,
+                'send_notification_checkout' => $validated['send_notification_checkout'] ?? 0,
                 'status' => AppointmentStatus::SCHEDULED,
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -316,7 +363,7 @@ class AppointmentController extends Controller
 
             $appointment->load(['customer:id,name', 'pet:id,name']);
             $msgName = trim(($appointment->customer->name ?? '') . ' - ' . ($appointment->pet->name ?? ''));
-            $successMsg = ($msgName ? ($msgName . ' Randevusu Oluşturuldu') : 'Randevu başarıyla oluşturuldu.');
+            $successMsg = ($msgName ? ($msgName . ' randevusu güncellendi.') : 'Randevu başarıyla güncellendi.');
             
             return redirect()->route('appointments.index')->with('success', $successMsg);
         });
@@ -347,7 +394,12 @@ class AppointmentController extends Controller
         $appointment->load(['customer.segment.services', 'pet', 'services']);
         $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
-        return view('appointments.checkin', compact('appointment', 'services', 'users'));
+        $last = \App\Models\Appointment::where('customer_id', $appointment->customer_id)
+  ->whereNotNull('notes')->where('notes','<>','')
+  ->where('id','<>',$appointment->id) // mevcut randevuyu hariç tutmak istersen
+  ->orderByDesc('planned_at')->orderByDesc('id')->first();
+        $lastNote = !empty($last->notes) ? $last->notes : '';
+        return view('appointments.checkin', compact('appointment', 'services', 'users', 'lastNote'));
     }
 
     /**
@@ -370,6 +422,8 @@ class AppointmentController extends Controller
             'service_ids.*' => 'exists:services,id',
             'service_quantities' => 'required_with:service_ids|array',
             'service_quantities.*' => 'required_with:service_ids|integer|min:1',
+            'send_notification_checkin' => 'nullable|integer',
+            'send_notification_checkout' => 'nullable|integer',
             'service_prices' => 'required_with:service_ids|array',
             'service_prices.*' => 'required_with:service_ids|numeric|min:0',
             'user_id' => 'nullable|array',
@@ -386,6 +440,7 @@ class AppointmentController extends Controller
                 'status' => AppointmentStatus::CHECKED_IN,
                 'checkin_at' => $validated['checkin_at'],
                 'owner_requests' => $validated['owner_requests'] ?? $appointment->owner_requests,
+                'send_notification_checkin' => $validated['send_notification_checkin'] ?? 0,
             ]);
 
             if (isset($validated['service_ids'])) {
@@ -471,7 +526,12 @@ class AppointmentController extends Controller
         $appointment->load(['customer', 'pet', 'services']);
         $services = \App\Models\Service::with('breeds')->get();
         $users = \App\Models\User::all();
-        return view('appointments.checkout', compact('appointment', 'services', 'users'));
+        $last = \App\Models\Appointment::where('customer_id', $appointment->customer_id)
+        ->whereNotNull('notes')->where('notes','<>','')
+        ->where('id','<>',$appointment->id) // mevcut randevuyu hariç tutmak istersen
+        ->orderByDesc('planned_at')->orderByDesc('id')->first();
+              $lastNote = !empty($last->notes) ? $last->notes : '';
+        return view('appointments.checkout', compact('appointment', 'services', 'users','lastNote'));
     }
 
     /**
@@ -495,6 +555,8 @@ class AppointmentController extends Controller
             'service_quantities.*' => 'required_with:service_ids|integer|min:1',
             'service_prices' => 'required_with:service_ids|array',
             'service_prices.*' => 'required_with:service_ids|numeric|min:0',
+            'send_notification_checkout' => 'nullable|integer',
+            'send_notification_checkin' => 'nullable|integer',
             'pivot' => 'nullable|array',
             'pivot.*.service_id' => 'required_with:pivot|exists:services,id',
             'pivot.*.unit_price' => 'nullable|numeric',
@@ -577,6 +639,7 @@ class AppointmentController extends Controller
         $appointment->update([
             'status' => AppointmentStatus::COMPLETED,
             'checkout_at' => $validated['checkout_at'],
+            'send_notification_checkout' => $validated['send_notification_checkout'] ?? 0,
         ]);
 
         $message = 'Randevu başarıyla tamamlandı (check-out).';

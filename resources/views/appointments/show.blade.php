@@ -56,13 +56,30 @@
                         <p><strong>Durum:</strong> 
                             @php
                                 $theme = 'secondary';
-                                if ($appointment->status === \App\Enums\AppointmentStatus::SCHEDULED) $theme = 'info';
-                                if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN) $theme = 'warning';
-                                if ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED) $theme = 'success';
-                                if ($appointment->status === \App\Enums\AppointmentStatus::CANCELLED) $theme = 'danger';
+                                $value = '';
+                                if ($appointment->status === \App\Enums\AppointmentStatus::SCHEDULED) 
+                                {
+                                    $theme = 'info';
+                                    $value = 'Planladı';
+                                }
+                                if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN) 
+                                {
+                                    $theme = 'warning';
+                                    $value = 'Giriş Yaptı';
+                                }
+                                if ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED) 
+                                {
+                                    $theme = 'success';
+                                    $value = 'Tamamlandı';
+                                }
+                                if ($appointment->status === \App\Enums\AppointmentStatus::CANCELLED) 
+                                {
+                                    $theme = 'danger';
+                                    $value = 'İptal Edildi';
+                                }
                             @endphp
                             <span class="badge badge-{{ $theme }}">
-                                {{ __($appointment->status->value) }}
+                                {{ $value }}
                             </span>
                         </p>
                         @if ($appointment->notes)

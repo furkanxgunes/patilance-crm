@@ -17,7 +17,24 @@
 @stop
 
 @section('content')
-
+<style>
+        /* Simple pagination styles */
+        .pagination {
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .pagination .page-link {
+            padding: 0.25rem 0.5rem;
+            min-width: 32px;
+            text-align: center;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #3490dc;
+            border-color: #3490dc;
+        }
+    </style>
     {{-- Başarı Mesajı --}}
     @if (session('success'))
         <x-adminlte-alert theme="success" title="Başarılı">
@@ -79,6 +96,11 @@
                 </tbody>
             </table>
         </div>
+        @if($customers->hasPages())
+            <div class="mt-3 d-flex justify-content-center">
+                {{ $customers->onEachSide(1)->links('pagination::bootstrap-4') }}
+            </div>
+        @endif
 
     </x-adminlte-card>
 @stop

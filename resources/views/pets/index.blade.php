@@ -3,6 +3,7 @@
 @section('title', 'Evcil Hayvan Yönetimi')
 
 @section('content_header')
+
     <div class="d-flex justify-content-between align-items-center">
         <h1 class="mb-0">Evcil Hayvan Yönetimi</h1>
         <nav aria-label="breadcrumb">
@@ -15,6 +16,24 @@
 @stop
 
 @section('content')
+<style>
+        /* Simple pagination styles */
+        .pagination {
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .pagination .page-link {
+            padding: 0.25rem 0.5rem;
+            min-width: 32px;
+            text-align: center;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #3490dc;
+            border-color: #3490dc;
+        }
+    </style>
     <div class="row">
         <div class="col-md-12">
             <x-adminlte-card title="Evcil Hayvan Listesi" theme="orange" icon="fas fa-paw" collapsible>
@@ -89,9 +108,12 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-3">
-                    {{ $pets->links() }}
-                </div>
+              
+                @if($pets->hasPages())
+            <div class="mt-3 d-flex justify-content-center">
+                {{ $pets->onEachSide(1)->links('pagination::bootstrap-4') }}
+            </div>
+        @endif
 
             </x-adminlte-card>
         </div>

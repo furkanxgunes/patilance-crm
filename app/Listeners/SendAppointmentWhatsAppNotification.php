@@ -97,9 +97,9 @@ class SendAppointmentWhatsAppNotification implements ShouldQueue
             $message = $this->prepareMessage($template, $appointment);
 
             // checked_in / completed => PDF gönderimi (aynen)
-            if ($event->newStatus->value === 'checked_in') {
+            if ($event->newStatus->value === 'checked_in' && $appointment->send_notification_checkin) {
                 $result = $this->sendDeliveryPdf($appointment, $customer->phone);
-            } elseif ($event->newStatus->value === 'completed') {
+            } elseif ($event->newStatus->value === 'completed' && $appointment->send_notification_checkout) {
                 $result = $this->sendCompletedPdf($appointment, $customer->phone);
             }
 
