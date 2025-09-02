@@ -9,6 +9,7 @@ use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Http\Controllers\ChatController;
 
 Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
@@ -28,6 +29,14 @@ Route::get('/home', function () {
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::get('/chat/{wa_id}', [ChatController::class, 'show'])->name('chat.show');
+
+Route::get('/whatsapp-messages', [ChatController::class, 'index'])
+    ->name('whatsapp-messages.index');
+
+Route::get('/whatsapp-messages/{wa_id}', [ChatController::class, 'show'])
+    ->name('whatsapp-messages.show');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
