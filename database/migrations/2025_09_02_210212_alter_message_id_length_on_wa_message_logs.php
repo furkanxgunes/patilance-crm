@@ -2,7 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('wa_message_logs', function (Blueprint $table) {
-            $table->string('message_id', 191)->change();
-        });
+        DB::statement('ALTER TABLE wa_message_logs MODIFY message_id VARCHAR(255) DEFAULT NULL');
     }
     
     public function down()
     {
-        Schema::table('wa_message_logs', function (Blueprint $table) {
-            $table->string('message_id', 50)->change(); // eski haline dönüş
-        });
+        DB::statement('ALTER TABLE wa_message_logs MODIFY message_id VARCHAR(64) DEFAULT NULL');
     }
 };
