@@ -5,7 +5,8 @@ use App\Http\Controllers\PetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SegmentController;
 use App\Http\Controllers\BreedController;
-
+use App\Http\Controllers\WhatsAppWebhookController;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -33,25 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', App\Http\Controllers\UserController::class)->except(['show']);
 });
 
-Route::match(['get','post'], '/whatsapp/webhook', function (Request $request) {
-    if ($request->isMethod('get')) {
-        // Hem "hub.*" hem "hub_*" parametrelerini oku
-        $mode      = $request->query('hub.mode', $request->query('hub_mode'));
-        $token     = $request->query('hub.verify_token', $request->query('hub_verify_token'));
-        $challenge = $request->query('hub.challenge', $request->query('hub_challenge'));
-
-        $verifyToken = 'patilance123'; // Meta paneline girdiğinle birebir aynı
-
-        if ($mode === 'subscribe' && $token === $verifyToken && $challenge) {
-            return response($challenge, 200)->header('Content-Type', 'text/plain');
-        }
-        return response('Token mismatch', 403);
-    }
-
-    Log::info('WA Webhook', ['payload' => $request->all()]);
-    return response('OK', 200);
-});
-
+Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 Route::middleware('auth')->group(function () {
     // WhatsApp Mesajları
