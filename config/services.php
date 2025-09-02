@@ -41,4 +41,8 @@ return [
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
     ],
 
+    'whatsapp' => [
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN', 'patilance123'),
+        'app_secret'   => env('WHATSAPP_APP_SECRET'),
+    ],
 ];
