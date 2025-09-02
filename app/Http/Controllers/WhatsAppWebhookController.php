@@ -34,23 +34,7 @@ class WhatsAppWebhookController extends Controller
             $payload = json_decode($raw, true) ?: [];
         }
         \Log::info('WA parsed_all', $payload);
-    
-        // 3) Her POST’ta bir raw_dump / heartbeat (tetik testi)
-        try {
-            \App\Models\WaMessageLog::create([
-                'direction' => 'status',
-                'status'    => 'raw_dump',
-                'raw'       => $payload ?: ['raw_text' => $raw],
-            ]);
-            \App\Models\WaMessageLog::create([
-                'direction' => 'status',
-                'status'    => 'heartbeat',
-                'raw'       => ['received_at' => now()->toISOString()],
-            ]);
-        } catch (\Throwable $e) {
-            // migration yoksa sessiz geç
-        }
-    
+   
         // 4) (Opsiyonel) İmza doğrulama – ilk etapta kapalı tutmak istersen bu bloğu yoruma al
         $sigHeader = $request->header('X-Hub-Signature-256');
         $appSecret = config('services.whatsapp.app_secret');
