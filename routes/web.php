@@ -7,6 +7,7 @@ use App\Http\Controllers\SegmentController;
 use App\Http\Controllers\BreedController;
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 Route::get('/', function () {
     if (auth()->check()) {
