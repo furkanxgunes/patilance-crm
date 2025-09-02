@@ -20,7 +20,7 @@ Route::get('/home', function () {
     return view('dashboard');
 });
 // Campaign routes
-Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
+Route::middleware([])->match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
