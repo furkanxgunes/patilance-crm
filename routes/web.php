@@ -47,7 +47,7 @@ Route::match(['get','post'], '/whatsapp/webhook', function (Request $request) {
         return response('Token mismatch', 403);
     }
 
-    // POST eventleri için şimdilik sade 200 dön
+    Log::info('WA Webhook', ['payload' => $request->all()]);
     return response('OK', 200);
 });
 
