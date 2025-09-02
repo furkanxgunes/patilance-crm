@@ -31,26 +31,27 @@ Route::middleware('auth')->group(function () {
     // Kullanıcı Yönetimi Rotaları
     Route::resource('users', App\Http\Controllers\UserController::class)->except(['show']);
 });
+
 Route::match(['get','post'], '/whatsapp/webhook', function (Request $request) {
-    // 1) Meta doğrulama (GET)
     if ($request->isMethod('get')) {
-        $verifyToken = 'patilance123'; // Meta paneline girdiğin ile %100 aynı olmalı
-        if ($request->query('hub_mode') === 'subscribe' || $request->query('hub.mode') === 'subscribe') {
-            $token = $request->query('hub_verify_token') ?? $request->query('hub.verify_token');
-            $challenge = $request->query('hub_challenge') ?? $request->query('hub.challenge');
-            if ($token === $verifyToken && $challenge) {
-                // DİKKAT: 200 ve gövdede sadece challenge dönecek; hiç boşluk, HTML, JSON yok!
-                return response($challenge, 200)
-                    ->header('Content-Type', 'text/plain');
-            }
+        // Hem "hub.*" hem "hub_*" parametrelerini oku
+        $mode      = $request->query('hub.mode', $request->query('hub_mode'));
+        $token     = $request->query('hub.verify_token', $request->query('hub_verify_token'));
+        $challenge = $request->query('hub.challenge', $request->query('hub_challenge'));
+
+        $verifyToken = 'patilance123'; // Meta paneline girdiğinle birebir aynı
+
+        if ($mode === 'subscribe' && $token === $verifyToken && $challenge) {
+            return response($challenge, 200)->header('Content-Type', 'text/plain');
         }
         return response('Token mismatch', 403);
     }
 
-    // 2) Webhook eventleri (POST)
-    Log::channel('daily')->info('WA Webhook', ['payload' => $request->all()]);
+    // POST eventleri için şimdilik sade 200 dön
     return response('OK', 200);
 });
+
+
 Route::middleware('auth')->group(function () {
     // WhatsApp Mesajları
     Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
