@@ -37,11 +37,7 @@ Route::middleware('auth')->group(function () {
 Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 Route::middleware('auth')->group(function () {
-    // WhatsApp Mesajları
-    Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\WhatsAppMessageController::class, 'index'])->name('index');
-        Route::get('/{message}', [\App\Http\Controllers\WhatsAppMessageController::class, 'show'])->name('show');
-    });
+
 
     Route::resource('services', App\Http\Controllers\ServiceController::class);
     Route::resource('customers', App\Http\Controllers\CustomerController::class); 

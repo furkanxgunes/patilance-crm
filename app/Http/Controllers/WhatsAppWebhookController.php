@@ -3,15 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
+// Modeli yukarıda use etmene gerek yok, tam nitelikli adla da çağırıyoruz.
 class WhatsAppWebhookController extends Controller
 {
-    // .env -> WHATSAPP_VERIFY_TOKEN=patilance123
-    // .env -> WHATSAPP_APP_SECRET=... (Meta Uygulama Gizli Anahtarınız)
     public function handle(Request $request)
     {
+        // --- GET: Meta doğrulama ---
         if ($request->isMethod('get')) {
             $mode      = $request->query('hub.mode', $request->query('hub_mode'));
             $token     = $request->query('hub.verify_token', $request->query('hub_verify_token'));
@@ -23,67 +22,91 @@ class WhatsAppWebhookController extends Controller
             return response('Token mismatch', 403);
         }
 
-        // --- İmza doğrulama (opsiyonel ama önerilir) ---
-        $sigHeader = $request->header('X-Hub-Signature-256');
-        $appSecret = config('services.whatsapp.app_secret');
-        if ($appSecret && $sigHeader) {
-            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $appSecret, false);
-            if (!hash_equals($expected, $sigHeader)) {
-                Log::warning('WA Webhook: Signature mismatch');
-                return response('Invalid signature', 403);
-            }
+        // --- POST: her seferinde DB'ye bir "heartbeat" düş (tetikleniyor mu görelim) ---
+        try {
+            \App\Models\WaMessageLog::create([
+                'direction'  => 'status',
+                'status'     => 'heartbeat',
+                'raw'        => ['received_at' => now()->toISOString()],
+            ]);
+        } catch (\Throwable $e) {
+            // tablo yoksa/migration atılmadıysa 200 dönüp sessiz geç
         }
 
-        // --- Payload işleme ---
-        $payload = $request->all();
-        Log::info('WA Webhook', ['payload' => $payload]);
+        try {
+            // --- İmza doğrulama (opsiyonel) ---
+            $sigHeader = $request->header('X-Hub-Signature-256');
+            $appSecret = config('services.whatsapp.app_secret');
 
-        // WhatsApp Cloud API tipik gövde yapısı
-        if (!empty($payload['entry'][0]['changes'][0]['value'])) {
-            $value = $payload['entry'][0]['changes'][0]['value'];
-
-            // 1) Gelen mesajlar (customers -> business)
-            if (!empty($value['messages'])) {
-                foreach ($value['messages'] as $msg) {
-                    $from   = $msg['from'] ?? null; // wa_id (E.164)
-                    $id     = $msg['id']   ?? null;
-                    $type   = $msg['type'] ?? null;
-                    $text   = $type === 'text' ? ($msg['text']['body'] ?? null) : null;
-
-                    // DB’ye yaz (aşağıdaki migration/model ile)
-                    \App\Models\WaMessageLog::create([
-                        'direction' => 'inbound',
-                        'wa_id'     => $from,
-                        'message_id'=> $id,
-                        'type'      => $type,
-                        'body'      => $text,
-                        'status'    => null,
-                        'raw'       => $msg,
-                    ]);
-                }
-            }
-
-            // 2) Durum güncellemeleri (sent/delivered/read/failed)
-            if (!empty($value['statuses'])) {
-                foreach ($value['statuses'] as $st) {
-                    $id     = $st['id']        ?? null; // message_id
-                    $status = $st['status']    ?? null; // sent|delivered|read|failed
-                    $to     = $st['recipient_id'] ?? null;
-
+            if ($appSecret && $sigHeader) {
+                $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $appSecret, false);
+                if (!hash_equals($expected, $sigHeader)) {
+                    // İmzayı doğrulayamadık; yine de 200 dönelim, ama DB'ye not düşelim.
                     \App\Models\WaMessageLog::create([
                         'direction' => 'status',
-                        'wa_id'     => $to,
-                        'message_id'=> $id,
-                        'type'      => 'status',
-                        'body'      => null,
-                        'status'    => $status,
-                        'raw'       => $st,
+                        'status'    => 'signature_mismatch',
+                        'raw'       => ['header' => $sigHeader],
+                    ]);
+                    return response('OK', 200);
+                }
+            }
+
+            // --- Payload işleme ---
+            $payload = $request->all();
+
+            // WhatsApp tipik gövde: entry[0].changes[0].value
+            $value = $payload['entry'][0]['changes'][0]['value'] ?? null;
+
+            if (!$value) {
+                \App\Models\WaMessageLog::create([
+                    'direction' => 'status',
+                    'status'    => 'unknown_payload',
+                    'raw'       => $payload,
+                ]);
+                return response('OK', 200);
+            }
+
+            // 1) Gelen mesajlar (inbound)
+            if (!empty($value['messages'])) {
+                foreach ($value['messages'] as $msg) {
+                    $type = $msg['type'] ?? null;
+                    \App\Models\WaMessageLog::create([
+                        'direction'  => 'inbound',
+                        'wa_id'      => $msg['from'] ?? null,
+                        'message_id' => $msg['id'] ?? null,
+                        'type'       => $type,
+                        'body'       => $type === 'text' ? ($msg['text']['body'] ?? null) : null,
+                        'status'     => null,
+                        'raw'        => $msg,
                     ]);
                 }
             }
-        }
 
-        // WhatsApp 200 OK bekler; ekstra çıktı yok.
-        return response('OK', Response::HTTP_OK);
+            // 2) Durumlar (sent/delivered/read/failed)
+            if (!empty($value['statuses'])) {
+                foreach ($value['statuses'] as $st) {
+                    \App\Models\WaMessageLog::create([
+                        'direction'  => 'status',
+                        'wa_id'      => $st['recipient_id'] ?? null,
+                        'message_id' => $st['id'] ?? null,
+                        'type'       => 'status',
+                        'status'     => $st['status'] ?? null,
+                        'raw'        => $st,
+                    ]);
+                }
+            }
+
+            return response('OK', Response::HTTP_OK);
+        } catch (\Throwable $e) {
+            // Hiçbir durumda 500 dönmeyelim; hatayı DB'ye not düş.
+            try {
+                \App\Models\WaMessageLog::create([
+                    'direction' => 'status',
+                    'status'    => 'handler_error',
+                    'raw'       => ['exception' => $e->getMessage()],
+                ]);
+            } catch (\Throwable $ignored) {}
+            return response('OK', 200);
+        }
     }
 }
