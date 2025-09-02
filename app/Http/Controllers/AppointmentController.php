@@ -34,7 +34,8 @@ class AppointmentController extends Controller
             ->when($status, function ($qBuilder) use ($status) {
                 $qBuilder->where('status', $status);
             })
-            ->orderBy('planned_at');
+            ->orderBy('planned_at', 'desc');
+        
         $appointments = $query->paginate(10)->withQueryString();
         $statuses = AppointmentStatus::cases();
         return view('appointments.index', compact('appointments', 'statuses', 'q', 'status'));

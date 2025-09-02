@@ -58,7 +58,19 @@
                             <select name="status" class="form-control">
                                 <option value="">Durum (tümü)</option>
                                 @foreach(($statuses ?? []) as $st)
-                                    <option value="{{ $st->value }}" {{ ($status ?? '')===$st->value ? 'selected' : '' }}>{{ __($st->value) }}</option>
+                                    @php
+                                        $label = $st->value;
+                                        if ($st->value == "scheduled") {
+                                            $label = 'Planlandı';
+                                        } elseif ($st->value == "checked_in") {
+                                            $label = 'Giriş Yaptı';
+                                        } elseif ($st->value == "completed") {
+                                            $label = 'Tamamlandı';
+                                        } elseif ($st->value == "cancelled") {
+                                            $label = 'İptal Edildi';
+                                        }
+                                    @endphp
+                                    <option value="{{ $st->value }}" {{ ($status ?? '')===$st->value ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>

@@ -53,6 +53,12 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
+        $completedAppointments = Appointment::with(['customer', 'pet', 'services'])
+            ->where('status', AppointmentStatus::COMPLETED)
+            ->orderBy('checkout_at', 'asc')
+            ->limit(5)
+            ->get();
+
         // Renk efsanesi
         $colorLegend = [
             'scheduled' => ['color' => '#28a745', 'label' => 'Planlanmış'],
@@ -61,7 +67,7 @@ class DashboardController extends Controller
             'cancelled' => ['color' => '#dc3545', 'label' => 'İptal Edildi'],
         ];
 
-        return view('dashboard', compact('events', 'colorLegend', 'scheduledAppointments', 'activeAppointments', 'services'));
+        return view('dashboard', compact('events', 'colorLegend', 'scheduledAppointments', 'activeAppointments', 'services', 'completedAppointments'));
     }
 
     private function getEventColor(string $status): string

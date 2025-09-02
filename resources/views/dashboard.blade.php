@@ -82,6 +82,28 @@
                     <p class="text-muted mb-0">Aktif randevu yok.</p>
                 @endforelse
             </x-adminlte-card>
+            <x-adminlte-card title="Tamamlanan Randevular" theme="success" icon="fas fa-check" collapsible>
+                @forelse($completedAppointments as $a)
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="w-75">
+                            <div class="font-weight-bold">{{ $a->customer->name }} @if($a->pet) - {{ $a->pet->name }} @endif</div>
+                            <div class="mt-1">
+                                @foreach($a->services as $service)
+                                    <span class="badge badge-info mr-1 mb-1">{{ $service->name }}</span>
+                                @endforeach
+                            </div>
+                            <small class="text-muted">Check-in: {{ optional($a->checkin_at)->format('d.m.Y H:i') }}</small>
+                        </div>
+                        <div class="text-nowrap">
+                      
+                            <a class="btn btn-xs btn-outline-secondary" target="_blank" href="{{ route('appointments.delivery.pdf', $a) }}" title="Teslim Tutanağı"><i class="fas fa-file-pdf"></i>Teslim Tutanağı</a>
+                        
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">Aktif randevu yok.</p>
+                @endforelse
+            </x-adminlte-card>
         </div>
         <div class="col-md-6">
             <x-adminlte-card title="Randevu Takvimi" theme="primary" icon="fas fa-calendar" collapsible>
