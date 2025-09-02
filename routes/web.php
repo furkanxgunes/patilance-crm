@@ -10,6 +10,26 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
+Route::match(['get','post'], '/whatsapp/webhook', function (\Illuminate\Http\Request $request) {
+    \Log::info('WEBHOOK-HIT', [
+        'method'  => $request->method(),
+        'headers' => $request->headers->all(),
+        'raw'     => $request->getContent(),
+        'parsed'  => $request->all(),
+    ]);
+    // GET doğrulaması:
+    if ($request->isMethod('get')) {
+        $mode      = $request->query('hub.mode');
+        $token     = $request->query('hub.verify_token');
+        $challenge = $request->query('hub.challenge');
+        if ($mode === 'subscribe' && $token === 'patilance123' && $challenge) {
+            return response($challenge, 200)->header('Content-Type', 'text/plain');
+        }
+        return response('Token mismatch', 403);
+    }
+    return response('OK', 200);
+})->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
@@ -19,8 +39,6 @@ Route::get('/', function () {
 Route::get('/home', function () {
     return view('dashboard');
 });
-// Campaign routes
-Route::middleware([])->match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
