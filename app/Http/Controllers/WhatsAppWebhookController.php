@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-
+use Illuminate\Support\Facades\Log;
 // Modeli yukarıda use etmene gerek yok, tam nitelikli adla da çağırıyoruz.
 class WhatsAppWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        
+        Log::info($request->all());
         // --- GET: Meta doğrulama ---
         if ($request->isMethod('get')) {
             $mode      = $request->query('hub.mode', $request->query('hub_mode'));
