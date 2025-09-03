@@ -96,8 +96,7 @@
                         </div>
                         <div class="text-nowrap">
                       
-                            <a class="btn btn-xs btn-outline-secondary" target="_blank" href="{{ route('appointments.delivery.pdf', $a) }}" title="Teslim Tutanağı"><i class="fas fa-file-pdf"></i>Teslim Tutanağı</a>
-                        
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('appointments.show', $a) }}" title="Randevu Detayları"><i class="fas fa-eye"></i> Detay</a>
                         </div>
                     </div>
                 @empty
