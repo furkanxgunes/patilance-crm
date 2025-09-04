@@ -92,7 +92,7 @@
                                     <span class="badge badge-info mr-1 mb-1">{{ $service->name }}</span>
                                 @endforeach
                             </div>
-                            <small class="text-muted">Check-in: {{ optional($a->checkin_at)->format('d.m.Y H:i') }}</small>
+                            <small class="text-muted">Check-out: {{ optional($a->checkout_at)->format('d.m.Y H:i') }}</small>
                         </div>
                         <div class="text-nowrap">
                       

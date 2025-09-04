@@ -55,7 +55,7 @@ class DashboardController extends Controller
 
         $completedAppointments = Appointment::with(['customer', 'pet', 'services'])
             ->where('status', AppointmentStatus::COMPLETED)
-            ->orderBy('checkout_at', 'asc')
+            ->orderBy('checkout_at', 'desc')
             ->limit(5)
             ->get();
 
