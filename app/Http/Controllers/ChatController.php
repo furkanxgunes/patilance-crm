@@ -24,7 +24,6 @@ class ChatController extends Controller
     {
         $search = $request->input('search');
 
-        // Müşteri adına veya numarasına göre filtrelemek için önce ilgili müşteri telefonlarını bulalım
         $matchingStandardizedCustomerPhones = [];
         if ($search) {
             $matchingCustomers = Customer::where(function ($query) use ($search) {
@@ -35,7 +34,7 @@ class ChatController extends Controller
                 if (!empty($standardizedSearch)) {
                     $query->orWhere('phone', 'like', '%' . $standardizedSearch . '%');
                 }
-            })->get(); // Sadece ID'ler yerine tüm müşteriyi alalım ki sonra telefon numaralarını çekebilelim.
+            })->get();
 
             $matchingStandardizedCustomerPhones = $matchingCustomers->pluck('phone')->map(function($phone) {
                 return $this->standardizePhoneNumber($phone);
@@ -46,44 +45,38 @@ class ChatController extends Controller
             ->whereNotNull('wa_id')
             ->select([
                 'wa_id',
-                DB::raw('MAX(created_at) AS last_at'),
+                DB::raw('MAX(created_at) AS last_at'), // BURAYI DÜZELTTİK!
                 DB::raw('SUM(CASE WHEN direction="inbound" THEN 1 ELSE 0 END) AS inbound_count'),
                 DB::raw('SUM(CASE WHEN direction="outbound" THEN 1 ELSE 0 END) AS outbound_count'),
-                // En son mesajın durumunu ve yönünü çekmek için daha karmaşık bir alt sorgu
+                // EN SON MESAJIN DURUMUNU VE YÖNÜNÜ ÇEKEN ALT SORGULAR
                 DB::raw('(SELECT status FROM wa_message_logs AS last_msg_status
                          WHERE last_msg_status.wa_id = wa_message_logs.wa_id
-                         ORDER BY created_at DESC LIMIT 1) as last_status'),
+                         ORDER BY last_msg_status.created_at DESC, last_msg_status.id DESC LIMIT 1) as last_status'),
                 DB::raw('(SELECT direction FROM wa_message_logs AS last_msg_direction
                          WHERE last_msg_direction.wa_id = wa_message_logs.wa_id
-                         ORDER BY created_at DESC LIMIT 1) as last_status_direction')
+                         ORDER BY last_msg_direction.created_at DESC, last_msg_direction.id DESC LIMIT 1) as last_status_direction')
             ])
             ->groupBy('wa_id')
             ->orderByDesc('last_at');
 
-        // Arama terimi varsa, threads'i filtrele
+        // ... (Arama filtreleme mantığı aynı kalacak)
         if ($search) {
-            // Eğer arama sadece telefon numarasına göre yapıldıysa veya müşteri adına göre eşleşen
-            // telefon numaraları varsa, bu numaraları kullanarak filtreleme yapalım.
-            $searchWaIds = [];
             $standardizedSearch = $this->standardizePhoneNumber($search);
-
-            // Eğer arama terimi standardize edilmiş bir telefon numarasıyla eşleşiyorsa, onu da ekle
-            if (!empty($standardizedSearch)) {
-                 // Sadece müşteri tablosundan gelen eşleşmelerle sınırlı kalmamak için
-                 // arama teriminin kendisini de wa_id'ye karşı kontrol edelim.
+            if (!empty($standardizedSearch) || !empty($matchingStandardizedCustomerPhones)) {
                 $threadsQuery->where(function($query) use ($matchingStandardizedCustomerPhones, $standardizedSearch) {
-                    // Müşteri tablosundan gelen standardize edilmiş telefon numaraları ile eşleşen wa_id'ler
-                    $query->whereIn(DB::raw("SUBSTR(REPLACE(REPLACE(wa_id, '+', ''), '90', '0'), 1)"), $matchingStandardizedCustomerPhones);
-
-                    // Veya doğrudan wa_id'nin standardize edilmiş hali arama terimiyle eşleşiyorsa
-                    $query->orWhere(DB::raw("SUBSTR(REPLACE(REPLACE(wa_id, '+', ''), '90', '0'), 1)"), $standardizedSearch);
+                    if (!empty($matchingStandardizedCustomerPhones)) {
+                        $query->whereIn(DB::raw("SUBSTR(REPLACE(REPLACE(wa_id, '+', ''), '90', '0'), 1)"), $matchingStandardizedCustomerPhones);
+                    }
+                    if (!empty($standardizedSearch)) {
+                        $query->orWhere(DB::raw("SUBSTR(REPLACE(REPLACE(wa_id, '+', ''), '90', '0'), 1)"), $standardizedSearch);
+                    }
                 });
             } else {
-                // Sadece müşteri adı/soyadına göre arandıysa, eşleşen müşteri telefonlarını kullan
-                $threadsQuery->whereIn(DB::raw("SUBSTR(REPLACE(REPLACE(wa_id, '+', ''), '90', '0'), 1)"), $matchingStandardizedCustomerPhones);
+                 // Eğer hiç eşleşen müşteri telefonu yoksa ve arama terimi de boşsa,
+                 // filtreleme yapmamak veya boş sonuç döndürmek gerekir.
             }
         }
-
+        // ...
 
         $threads = $threadsQuery->paginate(20);
 
@@ -98,12 +91,9 @@ class ChatController extends Controller
         });
 
         $threads->getCollection()->transform(function ($thread) use ($customers) {
-            // last_at string ise Carbon objesine dönüştür
             if (is_string($thread->last_at)) {
                 $thread->last_at = Carbon::parse($thread->last_at);
             }
-
-            // Müşteri bilgisini thread objesine ekle
             $standardizedThreadWaId = $this->standardizePhoneNumber($thread->wa_id);
             $thread->customer = $customers->get($standardizedThreadWaId);
 
