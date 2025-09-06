@@ -1,4 +1,3 @@
-{{-- resources/views/chat/index.blade.php --}}
 @extends('adminlte::page')
 
 @section('title', 'WhatsApp Sohbetleri')
@@ -8,41 +7,122 @@
 @stop
 
 @section('content')
-<div class="card">
-  <div class="card-body p-0">
-    <table class="table table-hover mb-0">
-      <thead>
-        <tr>
-          <th>Numara (wa_id)</th>
-          <th>Son Aktivite</th>
-          <th>Gelen</th>
-          <th>Giden</th>
-          <th style="width:100px"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($threads as $t)
-          <tr>
-            <td>{{ $t->wa_id }}</td>
-            <td>{{ \Carbon\Carbon::parse($t->last_at)->format('Y-m-d H:i') }}</td>
-            <td><span class="badge bg-success">{{ $t->inbound_count }}</span></td>
-            <td><span class="badge bg-primary">{{ $t->outbound_count }}</span></td>
-            <td>
-              <a href="{{ route('whatsapp-messages.show', $t->wa_id) }}" class="btn btn-sm btn-outline-primary">
-                Görüntüle
-              </a>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="5" class="text-center text-muted p-4">Sohbet bulunamadı.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-  @if($threads->hasPages())
-    <div class="card-footer clearfix">
-      {{ $threads->onEachSide(1)->links() }}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Tüm Sohbetler</h3>
+                    <div class="card-tools">
+                        <form action="{{ route('whatsapp-messages.index') }}" method="GET">
+                            <div class="input-group input-group-sm" style="width: 250px;">
+                                <input type="text" name="search" class="form-control float-right" placeholder="Müşteri Adı/No Ara" value="{{ $search ?? '' }}">
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-default">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <!-- /.card-header -->
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 10px">#</th>
+                                <th>Müşteri</th>
+                                <th>Telefon</th>
+                                <th>Gelen Mesaj</th>
+                                <th>Giden Mesaj</th>
+                                <th>Son Mesaj Durumu</th>
+                                <th>Son İletişim</th>
+                                <th style="width: 40px">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($threads as $thread) {{-- forelse kullanarak boş sonuçları ele alıyoruz --}}
+                                <tr>
+                                    <td>{{ $loop->iteration + ($threads->currentPage() - 1) * $threads->perPage() }}</td>
+                                    <td>
+                                        @if ($thread->customer)
+                                            <a href="{{ route('customers.show', $thread->customer->id) }}">
+                                                {{ $thread->customer->name }} {{ $thread->customer->surname }}
+                                            </a>
+                                        @else
+                                            Bilinmeyen Müşteri
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($thread->customer)
+                                            {{ $thread->customer->phone }}
+                                        @else
+                                            {{ $thread->wa_id }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ $thread->inbound_count }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-secondary">{{ $thread->outbound_count }}</span>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $statusBadge = '';
+                                            switch ($thread->last_status) {
+                                                case 'sent':
+                                                    $statusBadge = 'badge-primary';
+                                                    break;
+                                                case 'delivered':
+                                                    $statusBadge = 'badge-success';
+                                                    break;
+                                                case 'read':
+                                                    $statusBadge = 'badge-success';
+                                                    break;
+                                                case 'failed':
+                                                    $statusBadge = 'badge-danger';
+                                                    break;
+                                                default:
+                                                    $statusBadge = 'badge-light';
+                                                    break;
+                                            }
+                                        @endphp
+                                        <span class="badge {{ $statusBadge }}">{{ ucfirst($thread->last_status) }}</span>
+                                    </td>
+                                    <td>{{ $thread->last_at->diffForHumans() }}</td>
+                                    <td>
+                                        <a href="{{ route('chat.show', $thread->wa_id) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> Görüntüle
+                                        </a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="text-center">Gösterilecek sohbet bulunamadı.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
+                <div class="card-footer clearfix">
+                    @if($threads->hasPages())
+                        <div class="mt-3 d-flex justify-content-center">
+                            {{ $threads->appends(request()->query())->onEachSide(1)->links('pagination::bootstrap-4') }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+            <!-- /.card -->
+        </div>
     </div>
-  @endif
-</div>
+@stop
+
+@section('css')
+    {{-- Add here extra stylesheets --}}
+    {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
+@stop
+
+@section('js')
+    <script> console.log('Hi!'); </script>
 @stop

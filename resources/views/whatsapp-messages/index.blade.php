@@ -29,6 +29,7 @@
                 <th>ID</th>
                 <th>Tarih</th>
                 <th>Alıcı</th>
+                <th>Telefon</th>
                 <th>Randevu</th>
                 <th>Mesaj Türü</th>
                 <th>Durum</th>
@@ -48,6 +49,7 @@
                                     <span class="text-muted">Müşteri bulunamadı</span>
                                 @endif
                             </td>
+                            <td>{{ $message->to }}</td>
                             <td>
                                 @if($message->appointment)
                                     <a href="{{ route('appointments.show', $message->appointment) }}" class="text-primary">

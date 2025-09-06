@@ -78,9 +78,12 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-3">
-            {{ $services->links() }}
-        </div>
+        @if($services->hasPages())
+            <div class="mt-3 d-flex justify-content-center">
+                {{ $services->onEachSide(1)->links('pagination::bootstrap-4') }}
+            </div>
+        @endif
+      
 
     </x-adminlte-card>
 @stop
