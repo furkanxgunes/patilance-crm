@@ -41,7 +41,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($threads as $thread) {{-- forelse kullanarak boş sonuçları ele alıyoruz --}}
+                            @forelse ($threads as $thread)
                                 <tr>
                                     <td>{{ $loop->iteration + ($threads->currentPage() - 1) * $threads->perPage() }}</td>
                                     <td>
@@ -68,26 +68,38 @@
                                     </td>
                                     <td>
                                         @php
+                                            $displayStatus = '';
                                             $statusBadge = '';
-                                            switch ($thread->last_status) {
-                                                case 'sent':
-                                                    $statusBadge = 'badge-primary';
-                                                    break;
-                                                case 'delivered':
-                                                    $statusBadge = 'badge-success';
-                                                    break;
-                                                case 'read':
-                                                    $statusBadge = 'badge-success';
-                                                    break;
-                                                case 'failed':
-                                                    $statusBadge = 'badge-danger';
-                                                    break;
-                                                default:
-                                                    $statusBadge = 'badge-light';
-                                                    break;
+
+                                            if ($thread->last_status_direction === 'inbound') {
+                                                $displayStatus = 'Müşteriden Yanıt';
+                                                $statusBadge = 'badge-success'; // Yeşil, yeni bir yanıt var
+                                            } else { // outbound mesaj
+                                                switch ($thread->last_status) {
+                                                    case 'sent':
+                                                        $displayStatus = 'Gönderildi';
+                                                        $statusBadge = 'badge-primary';
+                                                        break;
+                                                    case 'delivered':
+                                                        $displayStatus = 'Teslim Edildi';
+                                                        $statusBadge = 'badge-info';
+                                                        break;
+                                                    case 'read':
+                                                        $displayStatus = 'Okundu';
+                                                        $statusBadge = 'badge-success';
+                                                        break;
+                                                    case 'failed':
+                                                        $displayStatus = 'Başarısız';
+                                                        $statusBadge = 'badge-danger';
+                                                        break;
+                                                    default:
+                                                        $displayStatus = 'Bilinmiyor';
+                                                        $statusBadge = 'badge-light';
+                                                        break;
+                                                }
                                             }
                                         @endphp
-                                        <span class="badge {{ $statusBadge }}">{{ ucfirst($thread->last_status) }}</span>
+                                        <span class="badge {{ $statusBadge }}">{{ $displayStatus }}</span>
                                     </td>
                                     <td>{{ $thread->last_at->diffForHumans() }}</td>
                                     <td>
