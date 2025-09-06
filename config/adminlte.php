@@ -468,7 +468,13 @@ return [
                         'icon' => 'fas fa-users',
                     ],
                 ],
-            ]
+            ],
+            [
+                'text' => 'WhatsApp Log',
+                'url'  => 'whatsapp-messages',
+                'icon' => 'fas fa-comments',   
+            ],
+            
         // ['header' => 'labels'],
         // [
         //     'text' => 'important',

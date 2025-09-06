@@ -38,5 +38,9 @@ class Customer extends Model
     { 
         return $this->belongsTo(Segment::class);
     }
-
+    // BURAYI EKLEYİN:
+    public function whatsappMessages()
+    {
+        return $this->hasMany(WhatsAppMessage::class);
+    }
 }

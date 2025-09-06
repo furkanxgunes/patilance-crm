@@ -33,8 +33,7 @@
                                 <th style="width: 10px">#</th>
                                 <th>Müşteri</th>
                                 <th>Telefon</th>
-                                <th>Gelen Mesaj</th>
-                                <th>Giden Mesaj</th>
+                              
                                 <th>Son Mesaj Durumu</th>
                                 <th>Son İletişim</th>
                                 <th style="width: 40px">İşlem</th>
@@ -59,12 +58,6 @@
                                         @else
                                             {{ $thread->wa_id }}
                                         @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">{{ $thread->inbound_count }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-secondary">{{ $thread->outbound_count }}</span>
                                     </td>
                                     <td>
                                         @php

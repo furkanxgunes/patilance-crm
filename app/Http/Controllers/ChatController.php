@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WaMessageLog;
+use App\Models\WhatsAppMessage;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -103,12 +104,234 @@ class ChatController extends Controller
         return view('chat.index', compact('threads', 'customers', 'search'));
     }
 
+    protected function parseRawMessageContent($raw, $body, $direction, $defaultLogType)
+    {
+        $displayContent = $body;
+        $logType = $defaultLogType;
+        $rawMessageType = null;
+
+        if ($raw && is_array($raw)) {
+            $messageValue = null;
+
+            // Raw içinde 'entry' objesi olan loglar (genellikle status veya ilk gelen webhook'lar)
+            if (isset($raw['entry'][0]['changes'][0]['value']['messages'][0])) {
+                $messageValue = $raw['entry'][0]['changes'][0]['value']['messages'][0];
+            }
+            // 'direction='inbound' olanlar için 'raw' doğrudan mesaj objesi gibi (sizin SQL dökümünüzdeki gibi)
+            else if ($direction === 'inbound') {
+                 $messageValue = $raw;
+            }
+
+            if ($messageValue) {
+                $messageType = $messageValue['type'] ?? null;
+                if ($messageType) {
+                    $logType = $messageType;
+                    $rawMessageType = $messageType;
+                }
+
+                if ($messageType === 'reaction' && isset($messageValue['reaction']['emoji'])) {
+                    $displayContent = "Müşteri reaksiyonu: " . $messageValue['reaction']['emoji'];
+                } elseif ($messageType === 'sticker') {
+                    $displayContent = "Müşteri bir çıkartma gönderdi.";
+                } elseif ($messageType === 'image') {
+                    $displayContent = "Müşteri bir görsel gönderdi.";
+                } elseif ($messageType === 'video') {
+                    $displayContent = "Müşteri bir video gönderdi.";
+                } elseif ($messageType === 'document') {
+                    $displayContent = "Müşteri bir belge gönderdi.";
+                } elseif ($messageType === 'audio') {
+                    $displayContent = "Müşteri bir sesli mesaj gönderdi.";
+                }
+                // Text mesajın body'si boşsa ve raw'da text.body varsa onu alalım
+                if ($messageType === 'text' && empty($body) && isset($messageValue['text']['body'])) {
+                     $displayContent = $messageValue['text']['body'];
+                }
+            }
+        }
+        return ['content' => $displayContent, 'log_type' => $logType, 'raw_message_type' => $rawMessageType];
+    }
+
+    /**
+     * Durumların önceliklerini belirler.
+     * Index sayfasındaki özet durumları belirlerken kullanılır.
+     */
+    protected function getStatusPriority($status)
+    {
+        $statusPriority = [
+            'pending' => 0,
+            'sent' => 1,
+            'delivered' => 2,
+            'read' => 3,
+            'failed' => 99,
+            'Bilinmiyor' => -1, // Varsayılan durum
+        ];
+        return $statusPriority[$status] ?? -1;
+    }
+
+    /**
+     * Mevcut bir durumun, yeni bir durumla güncellenip güncellenmeyeceğini kontrol eder.
+     */
+    protected function shouldUpdateStatus($oldStatus, $newStatus)
+    {
+        $oldPriority = $this->getStatusPriority($oldStatus);
+        $newPriority = $this->getStatusPriority($newStatus);
+
+        // Eğer mevcut durum zaten 'failed' ise ve yeni durum da 'failed' değilse, güncelleme.
+        if ($oldStatus === 'failed' && $newStatus !== 'failed') {
+            return false;
+        }
+
+        // Eğer yeni durum 'failed' ise ve mevcut durum 'failed' değilse, her zaman güncelle.
+        if ($newStatus === 'failed' && $oldStatus !== 'failed') {
+            return true;
+        }
+
+        // Diğer durumlarda, daha yüksek öncelikli olanı al
+        return $newPriority > $oldPriority;
+    }
+
+    /**
+     * Belirli bir WhatsApp ID (telefon numarası) için sohbet detaylarını gösterir.
+     * Sadece en son giden mesajı ve tüm gelen mesajları gösterir.
+     */
     public function show($wa_id)
     {
-        $messages = WaMessageLog::where('wa_id', $wa_id)
+        $standardizedWaId = $this->standardizePhoneNumber($wa_id);
+        $customer = Customer::where('phone', $standardizedWaId)->first();
+
+        $finalMessages = collect();
+        $outboundMessagesToTrack = []; // message_id'ye göre kendi gönderdiğimiz mesajları tutar
+
+        // --- 1. Kendi Gönderdiğimiz WhatsAppMessage Kayıtlarını Önceden Yükle ---
+        // Bu kısım, WaMessageLog'larda sadece 'status' yönü olduğu için kritik.
+        // Bizim gönderdiğimiz mesajın orijinal içeriğini ve başlangıç durumunu buradan alacağız.
+        if ($customer) {
+            $ourMessages = $customer->whatsappMessages()->get();
+            foreach ($ourMessages as $ourMsg) {
+                $externalMessageId = $ourMsg->metadata['whatsapp_response']['message_id'] ?? null;
+                if ($externalMessageId) {
+                    $outboundMessagesToTrack[$externalMessageId] = (object)[
+                        'type' => 'outbound_our_system',
+                        'content' => $ourMsg->content,
+                        'status' => $ourMsg->status, // Kendi sistemimizdeki başlangıç durumu
+                        'timestamp' => $ourMsg->sent_at ?? $ourMsg->created_at,
+                        'direction' => 'outbound',
+                        'message_id' => $externalMessageId,
+                        'log_type' => $ourMsg->type, // appointment_scheduled vb.
+                        'reactions' => collect(),
+                        'order_id' => $ourMsg->id, // Mesajların orjinal ID'sini tut
+                    ];
+                }
+            }
+        }
+
+        // --- 2. Tüm wa_message_logs kayıtlarını çek ---
+        $allWaMessageLogs = WaMessageLog::where('wa_id', $wa_id)
+            ->whereNotNull('wa_id')
             ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
-        return view('chat.show', compact('messages', 'wa_id'));
+        // --- 3. Mesajları Birleştirme Mantığı ---
+        // Bu sefer, `finalMessages` koleksiyonunu doğrudan dolduracağız.
+        // En son giden mesajı bulmak için ayrı bir mekanizma kullanacağız.
+
+        $latestOutboundMessageInChat = null; // En son giden mesajı tutacak
+        $latestOutboundMessageStatus = null; // En son giden mesajın güncel status'ünü tutacak
+        $latestOutboundMessageTimestamp = null; // En son giden mesajın güncel timestamp'ini tutacak
+        $latestOutboundMessageLogId = null; // En son giden mesajın log id'sini tutacak
+
+        foreach ($allWaMessageLogs as $log) {
+            $messageTimestamp = Carbon::parse($log->created_at);
+            $currentMessageId = $log->message_id;
+
+            $parsedResult = $this->parseRawMessageContent($log->raw, $log->body, $log->direction, $log->type);
+            $displayContent = $parsedResult['content'];
+            $logType = $parsedResult['log_type'];
+            $rawMessageType = $parsedResult['raw_message_type'];
+
+            // Gelen mesajlar (inbound) veya raw içinde mesaj payload'ı olan status logları
+            if ($log->direction === 'inbound' || ($log->direction === 'status' && !empty($displayContent))) {
+                if ($rawMessageType === 'reaction') {
+                    // Reaksiyonları ayrı bir inbound mesaj gibi gösterelim (basitlik adına)
+                    $finalMessages->push((object)[
+                        'type' => 'inbound_message',
+                        'content' => $displayContent, // "Müşteri reaksiyonu: ❤️" gibi
+                        'status' => null,
+                        'timestamp' => $messageTimestamp,
+                        'direction' => 'inbound',
+                        'message_id' => $currentMessageId ?? $log->id,
+                        'log_type' => $logType,
+                        'reactions' => collect(),
+                    ]);
+                } else if (!isset($inboundMessagesMap[$currentMessageId ?? $log->id])) { // Mükerrer inboundları engelle
+                    $finalMessages->push((object)[
+                        'type' => 'inbound_message',
+                        'content' => $displayContent,
+                        'status' => null,
+                        'timestamp' => $messageTimestamp,
+                        'direction' => 'inbound',
+                        'message_id' => $currentMessageId ?? $log->id,
+                        'log_type' => $logType,
+                        'reactions' => collect(),
+                    ]);
+                    $inboundMessagesMap[$currentMessageId ?? $log->id] = true; // Ekledik işaretle
+                }
+            }
+            // Outbound mesaj durumu güncellemeleri
+            else if ($log->direction === 'status' && $currentMessageId) {
+                // Eğer bu durum güncellemesi, kendi gönderdiğimiz mesajlardan biriyle eşleşiyorsa
+                if (isset($outboundMessagesToTrack[$currentMessageId])) {
+                    $existingOutbound = $outboundMessagesToTrack[$currentMessageId];
+
+                    // Sadece en son giden mesajın durumunu ve timestamp'ini güncelle
+                    // Bu, show sayfasında tek bir giden mesajı göstereceğimiz için önemli
+                    if ($latestOutboundMessageInChat === null || $log->created_at->gt($latestOutboundMessageLogId->created_at)) {
+                        $latestOutboundMessageLogId = $log; // En son logu takip et
+                    }
+                    
+                    // Eğer bu log, zaten mevcut olan en son outbound logdan daha yeni veya öncelikli ise
+                    if ($latestOutboundMessageInChat && $this->shouldUpdateStatus($latestOutboundMessageStatus, $log->status)) {
+                        $latestOutboundMessageStatus = $log->status;
+                        $latestOutboundMessageTimestamp = isset($log->raw['timestamp']) ? Carbon::createFromTimestamp($log->raw['timestamp']) : $messageTimestamp;
+                    } else if ($latestOutboundMessageInChat === null) { // İlk kez bir outbound status logu görüyoruz
+                        $latestOutboundMessageStatus = $log->status;
+                        $latestOutboundMessageTimestamp = isset($log->raw['timestamp']) ? Carbon::createFromTimestamp($log->raw['timestamp']) : $messageTimestamp;
+                    }
+                }
+            }
+        }
+
+        // --- 4. En Son Giden Mesajı finalMessages'a ekle ---
+        // Bu, tüm inbound'lar ve varsa en son outbound mesajı birleştirir.
+        if ($latestOutboundMessageLogId) {
+             // Kontrol: latestOutboundMessageLogId'nin message_id'si ile eşleşen bir ourMessage var mı?
+            $finalOutboundContent = "Mesaj içeriği bulunamadı.";
+            $finalOutboundLogType = "text";
+            $finalOutboundMessageId = $latestOutboundMessageLogId->message_id;
+
+            if (isset($outboundMessagesToTrack[$finalOutboundMessageId])) {
+                $ourOriginal = $outboundMessagesToTrack[$finalOutboundMessageId];
+                $finalOutboundContent = $ourOriginal->content;
+                $finalOutboundLogType = $ourOriginal->log_type;
+            }
+
+            $lastOutboundMessage = (object)[
+                'type' => 'outbound_last_summary',
+                'content' => $finalOutboundContent,
+                'status' => $latestOutboundMessageStatus ?: 'Bilinmiyor',
+                'timestamp' => $latestOutboundMessageTimestamp ?: Carbon::parse($latestOutboundMessageLogId->created_at),
+                'direction' => 'outbound',
+                'message_id' => $finalOutboundMessageId,
+                'log_type' => $finalOutboundLogType,
+                'reactions' => collect(),
+            ];
+            $finalMessages->push($lastOutboundMessage);
+        }
+
+        // --- 5. Tüm Mesajları Son Kez Zaman Damgasına Göre Sırala ---
+        $finalMessages = $finalMessages->sortBy('timestamp');
+
+        return view('chat.show', compact('wa_id', 'customer', 'finalMessages'));
     }
 }
