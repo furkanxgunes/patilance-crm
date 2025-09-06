@@ -36,7 +36,6 @@
                               
                                 <th>Son Mesaj Durumu</th>
                                 <th>Son İletişim</th>
-                                <th style="width: 40px">İşlem</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -95,11 +94,6 @@
                                         <span class="badge {{ $statusBadge }}">{{ $displayStatus }}</span>
                                     </td>
                                     <td>{{ $thread->last_at->diffForHumans() }}</td>
-                                    <td>
-                                        <a href="{{ route('chat.show', $thread->wa_id) }}" class="btn btn-sm btn-info">
-                                            <i class="fas fa-eye"></i> Görüntüle
-                                        </a>
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
