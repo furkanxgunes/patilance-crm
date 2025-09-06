@@ -28,9 +28,7 @@ class ChatController extends Controller
         $matchingStandardizedCustomerPhones = [];
         if ($search) {
             $matchingCustomers = Customer::where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('surname', 'like', '%' . $search . '%');
-
+                $query->where('name', 'like', '%' . $search . '%');
                 $standardizedSearch = $this->standardizePhoneNumber($search);
                 if (!empty($standardizedSearch)) {
                     $query->orWhere('phone', 'like', '%' . $standardizedSearch . '%');
