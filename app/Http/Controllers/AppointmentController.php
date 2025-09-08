@@ -235,7 +235,7 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
-        $appointment->load(['customer', 'pet', 'services']);
+        $appointment->load(['customer', 'pet', 'services','services.breeds']);
         return view('appointments.show', compact('appointment'));
     }
 
@@ -661,7 +661,7 @@ class AppointmentController extends Controller
      */
     public function pdf(Appointment $appointment)
     {
-        $appointment->load(['customer', 'pet', 'services']);
+        $appointment->load(['customer', 'pet', 'services', 'services.breeds']);
 
         $pdf = Pdf::loadView('appointments.pdf', [
             'appointment' => $appointment,

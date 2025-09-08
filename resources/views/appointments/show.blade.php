@@ -112,10 +112,20 @@
                                                 @php 
                                                     $originalGrand = 0;
                                                     $discountedGrand = 0;
+                                                    $breedPrice = 0;
+                                                    $breedId = $appointment->pet->breed_id;
                                                 @endphp
                                                 @foreach ($appointment->services as $service)
                                                     @php
-                                                        $originalPrice = $service->pivot->unit_price ?? $service->base_price;
+                                                        $breedFind = $service->breeds->where('id', $breedId)->first();
+                                                        if($breedFind)
+                                                        {
+                                                            $breedPrice = $breedFind->pivot->price;
+                                                            $originalPrice = $breedPrice > 0 ? $breedPrice : $service->pivot->unit_price;
+                                                        }
+                                                        else{
+                                                            $originalPrice = $service->pivot->unit_price ?? $service->base_price;
+                                                        }
                                                         $discountedPrice = $service->pivot->discounted_price ?? $originalPrice;
                                                         $quantity = $service->pivot->quantity ?? 1;
                                                         $originalSubtotal = $originalPrice * $quantity;
@@ -222,42 +232,34 @@
                 
 
                 {{-- İşlem Butonları --}}
-                <div class="d-flex justify-content-between align-items-center mb-2 ml-2">
+                <div class="d-flex align-items-center mb-2 ml-2">
                     <div>
-                        <a href="{{ route('appointments.delivery.pdf', $appointment) }}" target="_blank" class="btn btn-outline-primary mr-2 mb-2">
+                        <a href="{{ route('appointments.delivery.pdf', $appointment) }}" target="_blank" class="btn btn-outline-primary mr-2 ">
                             <i class="fas fa-file-pdf"></i> Teslim Tutanağı (PDF)
                         </a>
-                        <a href="{{ route('appointments.pdf', $appointment) }}" target="_blank" class="btn btn-outline-secondary mb-2">
+                        <a href="{{ route('appointments.pdf', $appointment) }}" target="_blank" class="btn btn-outline-secondary mr-2 ">
                             <i class="fas fa-file-pdf"></i> Randevu Detayları (PDF)
                         </a>
                     </div>
                     @if ($appointment->status === \App\Enums\AppointmentStatus::SCHEDULED)
-                        <a href="{{ route('appointments.checkin.form', $appointment) }}" class="btn btn-success mr-2">
+                        <a href="{{ route('appointments.checkin.form', $appointment) }}" class="btn btn-success ml-2 mr-2">
                             <i class="fas fa-sign-in-alt"></i> Check-in
                         </a>
                     @elseif ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN)
                         <!-- <div class="mr-3 text-muted">
                             <p class="mb-0">Müşteri çıkış yapmaya hazır. Lütfen hizmetleri kontrol edin.</p>
                         </div> -->
-                        <a href="{{ route('appointments.checkout.form', $appointment) }}" class="btn btn-success">
+                        <a href="{{ route('appointments.checkout.form', $appointment) }}" class="btn btn-success ml-2 mr-2">
                             <i class="fas fa-sign-out-alt"></i> Check-out
                         </a>
                     @endif
 
                     @if ($appointment->status !== \App\Enums\AppointmentStatus::COMPLETED && $appointment->status !== \App\Enums\AppointmentStatus::CANCELLED)
-                        <a href="{{ route('appointments.edit', $appointment) }}" class="btn btn-warning ml-2">
+                        <a href="{{ route('appointments.edit', $appointment) }}" class="btn btn-warning mr-2 ml-2">
                             <i class="fas fa-edit"></i> Düzenle
                         </a>
-                        @if ($appointment->status === \App\Enums\AppointmentStatus::CHECKED_IN)
-                            <a href="{{ route('appointments.delivery.pdf', $appointment) }}" target="_blank" class="btn btn-outline-secondary ml-2">
-                                <i class="fas fa-file-pdf"></i> Teslim Tutanağı
-                            </a>
-                        @elseif ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED)
-                            <a href="{{ route('appointments.pdf', $appointment) }}" target="_blank" class="btn btn-outline-secondary ml-2">
-                                <i class="fas fa-file-pdf"></i> Randevu PDF
-                            </a>
-                        @endif
-                        <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="d-inline ml-2" onsubmit="return confirm('Bu randevuyu silmek istediğinizden emin misiniz?');">
+           
+                        <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="d-inline mr-2 ml-2" onsubmit="return confirm('Bu randevuyu silmek istediğinizden emin misiniz?');">
                             @csrf
                             @method('DELETE')
                             <x-adminlte-button type="submit" label="Sil" theme="danger" icon="fas fa-trash"/>

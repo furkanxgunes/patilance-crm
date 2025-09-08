@@ -61,10 +61,20 @@
                                                 @php 
                                                     $originalGrand = 0;
                                                     $discountedGrand = 0;
+                                                    $breedPrice = 0;
+                                                    $breedId = $appointment->pet->breed_id;
                                                 @endphp
                                                 @foreach ($appointment->services as $service)
                                                     @php
-                                                        $originalPrice = $service->pivot->unit_price ?? $service->base_price;
+                                                        $breedFind = $service->breeds->where('id', $breedId)->first();
+                                                        if($breedFind)
+                                                        {
+                                                            $breedPrice = $breedFind->pivot->price;
+                                                            $originalPrice = $breedPrice > 0 ? $breedPrice : $service->pivot->unit_price;
+                                                        }
+                                                        else{
+                                                            $originalPrice = $service->pivot->unit_price ?? $service->base_price;
+                                                        }
                                                         $discountedPrice = $service->pivot->discounted_price ?? $originalPrice;
                                                         $quantity = $service->pivot->quantity ?? 1;
                                                         $originalSubtotal = $originalPrice * $quantity;
