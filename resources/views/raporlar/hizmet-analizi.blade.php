@@ -53,7 +53,7 @@
                     <tbody>
                         @forelse($hizmetler as $hizmet)
                             <tr>
-                                <td>{{ $hizmet->name}}</td>
+                                <td>{{ $hizmet->name}} {{ $hizmet->trashed() ? '(Silinmiş)' : '' }}</td>
                                 <td>{{ $hizmet->toplam_islem }}</td>
                                 <td>{{ number_format($hizmet->toplam_tutar, 2, ',', '.') }} ₺</td>
                                 

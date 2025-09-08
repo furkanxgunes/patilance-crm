@@ -38,7 +38,7 @@ class DashboardController extends Controller
         }
 
         // Tüm hizmetleri çek (filtreleme için)
-        $services = \App\Models\Service::orderBy('name')->get();
+        $services = \App\Models\Service::orderBy('name')->withTrashed()->get();
 
         // Dashboard kartları için listeler (hizmetlerle birlikte)
         $scheduledAppointments = Appointment::with(['customer', 'pet', 'services'])
@@ -53,7 +53,9 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
-        $completedAppointments = Appointment::with(['customer', 'pet', 'services'])
+        $completedAppointments = Appointment::with(['customer', 'pet', 'services' => function($query) {
+            $query->withTrashed();
+        }])
             ->where('status', AppointmentStatus::COMPLETED)
             ->orderBy('checkout_at', 'desc')
             ->limit(5)

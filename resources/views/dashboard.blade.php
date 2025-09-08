@@ -89,7 +89,7 @@
                             <div class="font-weight-bold">{{ $a->customer->name }} @if($a->pet) - {{ $a->pet->name }} @endif</div>
                             <div class="mt-1">
                                 @foreach($a->services as $service)
-                                    <span class="badge badge-info mr-1 mb-1">{{ $service->name }}</span>
+                                    <span class="badge badge-info mr-1 mb-1">{{ $service->name }} {{$service->trashed() ? '(Silinmiş)' : ''}}</span>
                                 @endforeach
                             </div>
                             <small class="text-muted">Check-out: {{ optional($a->checkout_at)->format('d.m.Y H:i') }}</small>

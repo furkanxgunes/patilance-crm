@@ -235,7 +235,16 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
-        $appointment->load(['customer', 'pet', 'services','services.breeds']);
+        $appointment->load([
+            'customer',
+            'pet',
+            'services' => function ($query) {
+                $query->withTrashed(); // Soft deleted hizmetleri de dahil et
+            },
+            'services.breeds' => function ($query) {
+                $query->withTrashed(); // Eğer breed'ler de soft delete ise
+            }
+        ]);
         return view('appointments.show', compact('appointment'));
     }
 
@@ -661,7 +670,16 @@ class AppointmentController extends Controller
      */
     public function pdf(Appointment $appointment)
     {
-        $appointment->load(['customer', 'pet', 'services', 'services.breeds']);
+        $appointment->load([
+            'customer',
+            'pet',
+            'services' => function ($query) {
+                $query->withTrashed(); // Soft deleted hizmetleri de dahil et
+            },
+            'services.breeds' => function ($query) {
+                $query->withTrashed(); // Eğer breed'ler de soft delete ise
+            }
+        ]);
 
         $pdf = Pdf::loadView('appointments.pdf', [
             'appointment' => $appointment,
@@ -706,7 +724,7 @@ class AppointmentController extends Controller
 }
 public function appointmentPdfForWhatsApp(Appointment $appointment)
 {
-$appointment->load(['customer', 'pet', 'services']);
+$appointment->load(['customer', 'pet', 'services', 'services.breeds']);
 
 // PDF oluştur
 $pdf = Pdf::loadView('appointments.pdf', [

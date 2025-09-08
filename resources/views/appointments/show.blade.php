@@ -114,6 +114,7 @@
                                                     $discountedGrand = 0;
                                                     $breedPrice = 0;
                                                     $breedId = $appointment->pet->breed_id;
+                                                    $extraTotal = 0;
                                                 @endphp
                                                 @foreach ($appointment->services as $service)
                                                     @php
@@ -144,7 +145,12 @@
                                                         };
                                                     @endphp
                                                     <tr class="{{ $discount > 0 ? 'table-warning' : '' }}">
-                                                        <td>{{ $service->name }}</td>
+                                                        <td>
+                                                            {{ $service->name }}
+                                                            @if ($service->trashed())
+                                                                (silinmiş)
+                                                            @endif
+                                                        </td>
                                                         <td class="text-nowrap">{{ number_format($originalPrice, 2) }} TL</td>
                                                         <td class="text-nowrap {{ $discount > 0 ? 'text-success font-weight-bold' : '' }}">
                                                             {{ number_format($discountedPrice, 2) }} TL

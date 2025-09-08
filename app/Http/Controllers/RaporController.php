@@ -27,7 +27,7 @@ class RaporController extends Controller
         $bitis = $request->input('bitis', now()->endOfMonth()->format('Y-m-d'));
         
         // Hizmet istatistiklerini al
-        $hizmetler = Service::with(['appointments' => function($query) use ($baslangic, $bitis) {
+        $hizmetler = Service::withTrashed()->with(['appointments' => function($query) use ($baslangic, $bitis) {
             $query->whereBetween('checkin_at', [$baslangic, $bitis])
                   ->where('status', 'completed');
         }])->get();
@@ -90,12 +90,14 @@ class RaporController extends Controller
         $hizmetCiroDagilimi = [];
         
         // Hizmet bazlı ciro toplamları için dizi oluştur
-        $tumHizmetler = Service::pluck('name', 'id');
+        $tumHizmetler = Service::withTrashed()->pluck('name', 'id');
         $hizmetToplamlari = [];
         
         foreach ($tarihler as $tarih) {
             $sorgu = Appointment::where('status', 'completed')
-                ->with('services');
+                ->with(['services' => function($query) {
+                    $query->withTrashed();
+                }]);
             
             if (strlen($tarih) === 7) { // YYYY-MM formatında ise
                 $sorgu->whereYear('checkin_at', substr($tarih, 0, 4))
@@ -182,7 +184,9 @@ class RaporController extends Controller
         $sadikMusteriler = Customer::with(['appointments' => function($query) use ($baslangicTarih, $bitisTarih) {
             $query->where('status', 'completed')
                   ->whereBetween('checkin_at', [$baslangicTarih, $bitisTarih])
-                  ->with('services');
+                  ->with(['services' => function($query) {
+                    $query->withTrashed();
+                  }]);
         }])
         ->withCount(['appointments' => function($query) use ($baslangicTarih, $bitisTarih) {
             $query->where('status', 'completed')

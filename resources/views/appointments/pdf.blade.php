@@ -63,6 +63,7 @@
                                                     $discountedGrand = 0;
                                                     $breedPrice = 0;
                                                     $breedId = $appointment->pet->breed_id;
+                                                    $extraTotal = 0;
                                                 @endphp
                                                 @foreach ($appointment->services as $service)
                                                     @php

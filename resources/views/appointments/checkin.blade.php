@@ -285,7 +285,7 @@ document.querySelectorAll('[id^="userInput"]').forEach(input => {
                                                    name="service_ids[]" 
                                                    value="{{ $service->id }}" 
                                                    {{ in_array($service->id, old('service_ids', $selectedServices)) ? 'checked' : '' }}>
-                                            <label class="custom-control-label font-weight-bold" for="svc-{{ $service->id }}">{{ $service->name }}</label>
+                                            <label class="custom-control-label font-weight-bold" for="svc-{{ $service->id }}">{{ $service->name }} </label>
                                         </div>
                                     </div>
                                     
