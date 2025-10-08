@@ -161,6 +161,8 @@ class AppointmentController extends Controller
             'send_notification' => 'nullable|integer',
             'send_notification_checkin' => 'nullable|integer',
             'send_notification_checkout' => 'nullable|integer',
+            'send_notification_payment_status' => 'nullable|integer',
+            'payment_status' => 'nullable|integer',
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
             'service_quantities' => 'required|array',
@@ -186,6 +188,8 @@ class AppointmentController extends Controller
                 'send_notification' => $validated['send_notification'] ?? 0,
                 'send_notification_checkin' => $validated['send_notification_checkin'] ?? 0,
                 'send_notification_checkout' => $validated['send_notification_checkout'] ?? 0,
+                'send_notification_payment_status' => $validated['send_notification_payment_status'] ?? 0,
+                'payment_status' => $validated['payment_status'] ?? 0,
                 'status' => AppointmentStatus::SCHEDULED,
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -384,8 +388,9 @@ class AppointmentController extends Controller
      */
     public function destroy(Request $request, Appointment $appointment)
     {
+        $appointment->status = AppointmentStatus::CANCELLED;
+        $appointment->save();
         $appointment->delete();
-
         $message = 'Randevu başarıyla silindi.';
 
         // AJAX isteği kontrolü
@@ -434,6 +439,8 @@ class AppointmentController extends Controller
             'service_quantities.*' => 'required_with:service_ids|integer|min:1',
             'send_notification_checkin' => 'nullable|integer',
             'send_notification_checkout' => 'nullable|integer',
+            'send_notification_payment_status' => 'nullable|integer',
+            'payment_status' => 'nullable|integer',
             'service_prices' => 'required_with:service_ids|array',
             'service_prices.*' => 'required_with:service_ids|numeric|min:0',
             'user_id' => 'nullable|array',
@@ -567,6 +574,8 @@ class AppointmentController extends Controller
             'service_prices.*' => 'required_with:service_ids|numeric|min:0',
             'send_notification_checkout' => 'nullable|integer',
             'send_notification_checkin' => 'nullable|integer',
+            'payment_status' => 'nullable|integer',
+            'send_notification_payment_status' => 'nullable|integer',
             'pivot' => 'nullable|array',
             'pivot.*.service_id' => 'required_with:pivot|exists:services,id',
             'pivot.*.unit_price' => 'nullable|numeric',
@@ -650,6 +659,8 @@ class AppointmentController extends Controller
             'status' => AppointmentStatus::COMPLETED,
             'checkout_at' => $validated['checkout_at'],
             'send_notification_checkout' => $validated['send_notification_checkout'] ?? 0,
+            'send_notification_payment_status' => $validated['send_notification_payment_status'] ?? 0,
+            'payment_status' => $validated['payment_status'] ?? 0,
         ]);
 
         $message = 'Randevu başarıyla tamamlandı (check-out).';
@@ -663,6 +674,65 @@ class AppointmentController extends Controller
 
         // Başarılı check-out sonrası Randevu detay sayfasına yönlendir
         return redirect()->route('appointments.show', $appointment)->with('success', $message);
+    }
+
+    /**
+     * Update the payment status of the specified appointment.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Appointment  $appointment
+     * @return \Illuminate\Http\Response
+     */
+    public function updatePaymentStatus(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'payment_action' => 'required|in:mark_paid,mark_unpaid,notify_unpaid,notify_paid',
+        ]);
+        $action = $request->input('payment_action');
+        switch ($action) {
+            case 'mark_paid':
+                $appointment->update([
+                    'payment_status' => true,
+                    'send_notification_payment_status' => false,
+                ]);
+                $message = 'Ödeme durumu "Ödendi" olarak güncellendi.';
+                break;
+                
+            case 'mark_unpaid':
+                $appointment->update([
+                    'payment_status' => false,
+                    'send_notification_payment_status' => false,
+                ]);
+                $message = 'Ödeme durumu "Ödenmedi" olarak güncellendi.';
+                break;
+                
+            case 'notify_unpaid':
+                $appointment->update([
+                    'payment_status' => false,
+                    'send_notification_payment_status' => true,
+                ]);
+                
+                // Here you would typically send a notification to the customer
+                // For example: $appointment->customer->notify(new PaymentReminder($appointment, $notificationMessage));
+                
+                $message = 'Ödeme durumu "Ödenmedi" olarak güncellendi ve müşteriye bildirim gönderildi.';
+                break;
+                
+            case 'notify_paid':
+                $appointment->update([
+                    'payment_status' => true,
+                    'send_notification_payment_status' => true,
+                ]);
+                
+                // Here you would typically send a payment confirmation to the customer
+                // For example: $appointment->customer->notify(new PaymentConfirmation($appointment, $notificationMessage));
+                
+                $message = 'Ödeme durumu "Ödendi" olarak güncellendi ve teşekkür mesajı gönderildi.';
+                break;
+        }
+
+        return redirect()->route('appointments.show', $appointment)
+            ->with('success', $message);
     }
 
     /**

@@ -53,7 +53,7 @@
                         <p><strong>Planlanan Çıkış:</strong> {{ optional($appointment->planned_exit)->format('d.m.Y H:i') ?? '-' }}</p>
                         <p><strong>Check-in:</strong> {{ optional($appointment->checkin_at)->format('d.m.Y H:i') ?? '-' }}</p>
                         <p><strong>Check-out:</strong> {{ optional($appointment->checkout_at)->format('d.m.Y H:i') ?? '-' }}</p>
-                        <p><strong>Durum:</strong> 
+                        <p><strong>Durum:</strong>  
                             @php
                                 $theme = 'secondary';
                                 $value = '';
@@ -82,6 +82,72 @@
                                 {{ $value }}
                             </span>
                         </p>
+                        <p><strong>Ödeme Durumu:</strong> 
+                            @php
+                                $theme = 'secondary';
+                                $value = '';
+                                $showSaveButton = false;
+                                
+                                if ($appointment->payment_status == 1 && $appointment->send_notification_payment_status == 1) {
+                                    $theme = 'success';
+                                    $value = 'Bildirim Gönderildi, Ödendi';
+                                } elseif ($appointment->payment_status == 1) {
+                                    $theme = 'success';
+                                    $value = 'Ödendi';
+                                } elseif ($appointment->send_notification_payment_status == 1) {
+                                    $theme = 'warning';
+                                    $value = 'Bildirim Gönderildi, Ödenmedi';
+                                } else {
+                                    $theme = 'danger';
+                                    $value = 'Ödenmedi';
+                                }
+                            @endphp
+                            <span class="badge badge-{{ $theme }}">
+                                {{ $value }}
+                            </span>
+                            
+                            @if($appointment->status === \App\Enums\AppointmentStatus::COMPLETED)
+                                <button type="button" class="btn btn-xs btn-outline-{{ $theme }} ml-2" data-toggle="modal" data-target="#updatePaymentStatusModal">
+                                    <i class="fas fa-edit"></i> Güncelle
+                                </button>
+                            @endif
+                        </p>
+                        
+                        <!-- Payment Status Update Modal -->
+                        <div class="modal fade" id="updatePaymentStatusModal" tabindex="-1" role="dialog" aria-labelledby="updatePaymentStatusModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="updatePaymentStatusModalLabel">Ödeme Durumunu Güncelle</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <form action="{{ route('appointments.update-payment-status', $appointment) }}" method="POST">
+                                        @csrf
+                                        @method('PATCH')    
+                                        <div class="modal-body">
+                                            <div class="form-group">
+                                                <label for="payment_action">İşlem Seçin</label>
+                                                <select class="form-control" id="payment_action" name="payment_action" required>
+                                                    <option value="">İşlem Seçiniz</option>
+                                                    <option value="mark_paid" data-theme="success" >Ödendi Olarak İşaretle</option>
+                                                    <option value="mark_unpaid" data-theme="danger">Ödenmedi Olarak İşaretle</option>
+                                                    <option value="notify_unpaid" data-theme="warning">Ödenmedi Olarak İşaretle ve Mesaj Gönder</option>
+                                                    <option value="notify_paid" data-theme="info">Ödendi Olarak İşaretle ve Mesaj Gönder</option>
+                                                </select>
+                                            </div>
+                                            <span id="message-info"></span>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
                         @if ($appointment->notes)
                             <p><strong>Notlar:</strong> {{ $appointment->notes }}</p>
                         @endif
@@ -277,3 +343,38 @@
         </div>
     </div>
 @stop
+
+@push('js')
+<script>
+    $(document).ready(function() {
+        $('#payment_action').change(function() {
+            const selectedOption = $(this).find('option:selected');
+            const notificationGroup = $('#notification_message_group');
+            
+            // Show/hide notification message field based on selection
+            if (selectedOption.val().startsWith('notify_')) {
+                notificationGroup.show();
+            } else {
+                notificationGroup.hide();
+            }
+            
+            // Update button color based on selection
+            const theme = selectedOption.data('theme');
+            // i want create span element message by theme add after select
+            
+            if(selectedOption.val() == 'mark_paid') {
+                $('#message-info').text('');
+            } else if(selectedOption.val() == 'mark_unpaid') {
+                $('#message-info').text('');
+            } else if(selectedOption.val() == 'notify_unpaid') {
+                $('#message-info').text('Müşteriye "ödenmedi" mesajı gönderilecek.').addClass('badge badge-danger');
+            } else if(selectedOption.val() == 'notify_paid') {
+                $('#message-info').text('Müşteriye "ödeme alındı" mesajı gönderilecek.').addClass('badge badge-info');
+            }
+
+            $('.modal-footer .btn-primary').removeClass('btn-success btn-danger btn-warning btn-info')
+                .addClass('btn-' + theme);
+        });
+    });
+</script>
+@endpush

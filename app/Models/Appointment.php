@@ -34,6 +34,8 @@ class Appointment extends Model
         'send_notification' => 'boolean',
         'send_notification_checkin' => 'boolean',
         'send_notification_checkout' => 'boolean',
+        'payment_status' => 'boolean',
+        'send_notification_payment_status' => 'boolean',
     ];
     public function customer()
     {
@@ -58,6 +60,22 @@ class Appointment extends Model
     public function extraItems()
     {
         return $this->hasMany(AppointmentExtraItem::class);
+    }
+    public function getTotalAmountAttribute(): float
+    {
+        $total = 0.0;
+
+        // Her bir hizmet için discounted_price * quantity hesaplayıp topluyoruz
+        foreach ($this->services as $service) {
+            // Pivot tablodan discounted_price ve quantity'yi alıyoruz
+            $discountedPrice = (float) $service->pivot->discounted_price;
+            $quantity = (int) $service->pivot->quantity; // Quantity'nin integer olduğundan emin olun
+    
+            $total += ($discountedPrice * $quantity);
+        }
+       
+        $appointment_extra_items_amount = $this->extraItems->sum('price') ?? 0;
+        return (float) $total + $appointment_extra_items_amount;
     }
 
 }

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Appointment;
 use App\Events\AppointmentStatusChanged;
+use App\Events\AppointmentPaymentStatusChanged;
 use Illuminate\Support\Facades\Log;
 
 class AppointmentObserver
@@ -34,6 +35,19 @@ class AppointmentObserver
                 null, // No previous status for new appointments
                 $appointment->status
             ));
+                        // Yeni oluşturulduğunda ödeme durumu bildirimini de tetikle
+            // Sadece send_notification_payment_status true ise ve payment_status varsa
+            if ($appointment->send_notification_payment_status && $appointment->payment_status !== null) {
+                Log::info('AppointmentObserver: Yeni randevu için ödeme durumu bildirimi tetikleniyor.', [
+                    'appointment_id' => $appointment->id,
+                    'payment_status' => $appointment->payment_status
+                ]);
+                event(new AppointmentPaymentStatusChanged(
+                    $appointment,
+                    null, // Yeni olduğu için önceki ödeme durumu yok
+                    $appointment->payment_status
+                ));
+            }
         } finally {
             // Clean up
             unset(self::$processing[$appointment->id]);
@@ -67,6 +81,25 @@ class AppointmentObserver
                     $appointment->getOriginal('status'),
                     $appointment->status
                 ));
+            }
+             // Ödeme durumu veya bildirim tercihi değiştiğinde (randevu completed ise) yeni eventi tetikle
+            // Not: Sadece 'completed' durumdaki randevular için ödeme bildirimi gönderileceği belirtildiği için bu kontrolü ekledim.
+            if ($appointment->status === \App\Enums\AppointmentStatus::COMPLETED &&
+                ($appointment->isDirty('payment_status') || $appointment->isDirty('send_notification_payment_status'))) {
+
+                // Yalnızca send_notification_payment_status true ise veya payment_status değiştiyse gönder
+                if ($appointment->send_notification_payment_status || $appointment->isDirty('payment_status')) {
+                    Log::info('AppointmentObserver: Ödeme durumu veya bildirim tercihi değişikliği tespit edildi, AppointmentPaymentStatusChanged event fırlatılıyor.', [
+                        'appointment_id' => $appointment->id,
+                        'old_payment_status' => $appointment->getOriginal('payment_status'),
+                        'new_payment_status' => $appointment->payment_status
+                    ]);
+                    event(new AppointmentPaymentStatusChanged(
+                        $appointment,
+                        $appointment->getOriginal('payment_status'),
+                        $appointment->payment_status
+                    ));
+                }
             }
         } finally {
             // Clean up

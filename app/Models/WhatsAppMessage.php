@@ -17,6 +17,7 @@ class WhatsAppMessage extends Model
         'customer_id',
         'appointment_id',
         'type',
+        'payment_status_value', // Bu satırı ekleyin
         'content',
         'status',
         'metadata',
@@ -28,6 +29,8 @@ class WhatsAppMessage extends Model
         'scheduled_at' => 'datetime',
         'sent_at' => 'datetime',
         'metadata' => 'array',
+        'payment_status_value' => 'boolean', // Boolean olarak cast etmek de faydalı olacaktır
+
     ];
 
     public function customer(): BelongsTo

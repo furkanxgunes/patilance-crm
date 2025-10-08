@@ -1,6 +1,7 @@
 @extends('adminlte::page')
 
 @section('plugins.Summernote', true)
+@section('plugins.Select2', true)
 
 @section('title', $pet->name . ' Adlı Peti Düzenliyorsun')
 
@@ -28,7 +29,7 @@
             <div class="form-group row">
                 <label for="customer_id" class="col-sm-3 col-form-label">Müşteri</label>
                 <div class="col-sm-9">
-                    <select id="customer_id" name="customer_id" class="form-control" required>
+                    <select id="customer_id" name="customer_id" class="form-control select2" style="width: 100%;" required>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}" {{ old('customer_id', $pet->customer_id) == $customer->id ? 'selected' : '' }}>
                                 {{ $customer->name }}
@@ -67,13 +68,14 @@
             <div class="form-group row">
                 <label for="breed" class="col-sm-3 col-form-label">Irk</label>
                 <div class="col-sm-9">
-                <select name="breed_id" id="breed_id" class="form-control" required>
-                            @foreach($breeds as $breed)
-                                <option value="{{ $breed->id }}" {{ old('breed_id', $pet->breed_id) == $breed->id ? 'selected' : '' }}>
-                                    {{ $breed->name }}
-                                </option>
-                            @endforeach
-                        </select>                    @error('breed')
+                    <select name="breed_id" id="breed_id" class="form-control select2" style="width: 100%;" required>
+                        @foreach($breeds as $breed)
+                            <option value="{{ $breed->id }}" {{ old('breed_id', $pet->breed_id) == $breed->id ? 'selected' : '' }}>
+                                {{ $breed->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('breed_id')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
                 </div>
@@ -223,6 +225,55 @@
         @csrf
         @method('DELETE')
     </form>
+@stop
+
+@section('js')
+<style>
+    /* Custom styling for Select2 */
+    .select2-container--default .select2-selection--single {
+        height: auto !important;
+        min-height: 38px;
+        padding: 6px 12px;
+        border: 1px solid #d2d6de;
+        border-radius: 4px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5;
+    }
+</style>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Select2 for customer and breed selection
+        $('.select2').select2({
+            placeholder: 'Seçiniz...',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return 'Sonuç bulunamadı';
+                },
+                searching: function() {
+                    return 'Aranıyor...';
+                },
+                inputTooShort: function(args) {
+                    return 'En az ' + args.minimum + ' karakter giriniz';
+                }
+            }
+        });
+
+        // Initialize Select2 for customer selection with custom placeholder
+        $('#customer_id').data('select2').$container.find('.select2-selection').attr('title', 'Müşteri ara...');
+        
+        // Initialize Select2 for breed selection with custom placeholder
+        $('#breed_id').data('select2').$container.find('.select2-selection').attr('title', 'Irk ara...');
+    });
+</script>
 @stop
 
 <script>

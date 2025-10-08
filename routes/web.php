@@ -55,6 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('services', App\Http\Controllers\ServiceController::class);
     Route::resource('customers', App\Http\Controllers\CustomerController::class); 
     Route::resource('appointments', App\Http\Controllers\AppointmentController::class);
+    Route::patch('/appointments/{appointment}/update-payment-status', [App\Http\Controllers\AppointmentController::class, 'updatePaymentStatus'])->name('appointments.update-payment-status');
     Route::resource('campaigns', App\Http\Controllers\CampaignController::class);
     Route::get('/appointments/{appointment}/checkin', [App\Http\Controllers\AppointmentController::class, 'checkinForm'])->name('appointments.checkin.form');
     Route::get('/appointments/{appointment}/checkout', [App\Http\Controllers\AppointmentController::class, 'checkoutForm'])->name('appointments.checkout.form');
