@@ -55,15 +55,15 @@
                         <!-- Tarih Kısayolları -->
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="d-flex flex-wrap gap-1">
-                                <a href="{{ route('dashboard', ['start_date' => $yesterday, 'end_date' => $yesterday, 'category' => $category]) }}" 
+                                <a href="{{ route('dashboard', ['start_date' => $yesterday, 'end_date' => $yesterday]) }}" 
                                    class="btn btn-outline-secondary btn-sm">
                                     <i class="fas fa-chevron-left"></i> 
                                 </a>
-                                <a href="{{ route('dashboard', ['start_date' => $today, 'end_date' => $today, 'category' => $category]) }}" 
+                                <a href="{{ route('dashboard', ['start_date' => $today, 'end_date' => $today]) }}" 
                                    class="btn {{ $startDate === $today && $endDate === $today ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
                                     Bugün
                                 </a>
-                                <a href="{{ route('dashboard', ['start_date' => $tomorrow, 'end_date' => $tomorrow, 'category' => $category]) }}" 
+                                <a href="{{ route('dashboard', ['start_date' => $tomorrow, 'end_date' => $tomorrow]) }}" 
                                    class="btn btn-outline-secondary btn-sm">
                                      <i class="fas fa-chevron-right"></i>
                                 </a>
@@ -76,11 +76,11 @@
                                     $endOfMonth = now()->endOfMonth()->format('Y-m-d');
                                     $isCurrentMonth = $startDate === $startOfMonth && $endDate === $endOfMonth;
                                 @endphp
-                                <a href="{{ route('dashboard', ['start_date' => $startOfWeek, 'end_date' => $endOfWeek, 'category' => $category]) }}" 
+                                <a href="{{ route('dashboard', ['start_date' => $startOfWeek, 'end_date' => $endOfWeek]) }}" 
                                    class="ml-2 btn {{ $isCurrentWeek ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
                                     Bu Hafta
                                 </a>
-                                <a href="{{ route('dashboard', ['start_date' => $startOfMonth, 'end_date' => $endOfMonth, 'category' => $category]) }}" 
+                                <a href="{{ route('dashboard', ['start_date' => $startOfMonth, 'end_date' => $endOfMonth]) }}" 
                                    class="ml-1 btn {{ $isCurrentMonth ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
                                     {{ now()->translatedFormat('F') }}
                                 </a>
@@ -103,14 +103,6 @@
                                             <i class="fas fa-search"></i>
                                         </button>
                                     </div>
-                                </div>
-                                <div class="input-group input-group-sm mb-2">
-                                    <select name="category" class="form-control" onchange="this.form.submit()">
-                                        <option value="all" {{ $category === 'all' ? 'selected' : '' }}>Tüm Kategoriler</option>
-                                        @foreach($categories as $cat)
-                                            <option value="{{ $cat }}" {{ $category === $cat ? 'selected' : '' }}>{{ $cat }}</option>
-                                        @endforeach
-                                    </select>
                                 </div>
                             </div>
                         </form>
@@ -212,157 +204,283 @@
     <div class="row">
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header" data-toggle="collapse" data-target="#appointmentsCollapse" style="cursor: pointer;">
+                <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                         <small> <i class="fas fa-calendar-alt mr-2"></i>
                            {{ $dateRange }} Tarihli Randevular</small>
                             <span class="badge badge-primary ml-2">{{ $appointments->total() }}</span>
                         </h5>
-                        <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
-                <div class="collapse show" id="appointmentsCollapse">
-                    <div class="card-body p-0">
-                        @if($appointments->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                 
-                                    <tbody>
+                <div class="card-body p-0">
+                    @if($appointments->count() > 0)
+                        {{-- Tab Navigation --}}
+                        <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all" role="tab" data-category="all">
+                                    <i class="fas fa-list"></i> Tümü <span class="badge badge-secondary ml-1">{{ $appointments->total() }}</span>
+                                </a>
+                            </li>
+                            @php
+                                $categoryAppointmentCounts = [];
+                                foreach($appointments as $appointment) {
+                                    foreach($appointment->services as $service) {
+                                        if (!empty($service->category)) {
+                                            if (!isset($categoryAppointmentCounts[$service->category])) {
+                                                $categoryAppointmentCounts[$service->category] = [];
+                                            }
+                                            if (!in_array($appointment->id, $categoryAppointmentCounts[$service->category])) {
+                                                $categoryAppointmentCounts[$service->category][] = $appointment->id;
+                                            }
+                                        }
+                                    }
+                                }
+                            @endphp
+                            @foreach($categories as $cat)
+                                @php
+                                    $catCount = isset($categoryAppointmentCounts[$cat]) ? count($categoryAppointmentCounts[$cat]) : 0;
+                                @endphp
+                                @if($catCount > 0)
+                                <li class="nav-item">
+                                    <a class="nav-link" id="{{ Str::slug($cat) }}-tab" data-toggle="tab" href="#{{ Str::slug($cat) }}" role="tab" data-category="{{ $cat }}">
+                                        {{ $cat }} <span class="badge badge-secondary ml-1">{{ $catCount }}</span>
+                                    </a>
+                                </li>
+                                @endif
+                            @endforeach
+                        </ul>
 
-                                        @foreach($appointments as $appointment)
-                                            @php
-                                                $entryDate = $appointment->checkin_at ?? $appointment->planned_at;
-                                                $exitDate = $appointment->checkout_at ?? $appointment->planned_exit;                                   
-                                            @endphp
-                                            @php
-                                                        $colorStyle = [
-                                                            'scheduled' => '#ffbe471c',
-                                                            'checked_in' => '#adff2f29',
-                                                            'completed' => '#4ab6011c',
-                                                            'cancelled' => '#ff000059'
-                                                        ][$appointment->status->value] ?? 'transparent';
-                                                        
-                                                        $colorText = [
-                                                            'scheduled' => 'text-gray',
-                                                            'checked_in' => 'text-green',
-                                                            'completed' => 'text-blue',
-                                                            'cancelled' => 'text-red'
-                                                        ][$appointment->status->value] ?? $appointment->status->value;
-                                                        $badgeStyle = [
-                                                            'scheduled' => 'warning',
-                                                            'checked_in' => 'success',
-                                                            'completed' => 'primary',
-                                                            'cancelled' => 'danger'
-                                                        ][$appointment->status->value] ?? 'secondary';
-                                                    @endphp
-                                            <tr style="background-color: {{ $colorStyle }}">
-                                            <td>
-                                                <div class="row">
-                                                    <div class="col-6">
-                                                    <span class="font-weight-bold {{ $colorText }}">{{ $appointment->customer->name ?? 'Müşteri Yok' }}</span>
-                                                    <span class="font-weight-bold {{ $colorText }}"> - {{ $appointment->pet->name ?? 'Evcil Hayvan Yok ' }} |</span> 
-                                                    @foreach($appointment->services as $service)
-                                                    @if ($appointment->services->count() == 1)
-                                                        <strong><small class="{{ $colorText }}">({{ $service->name }})</small></strong>
-                                                    @elseif ($loop->last)
-                                                        <strong><small class="{{ $colorText }}">{{ $service->name }})</small></strong>
-                                                    @elseif ($loop->first)
-                                                        <strong><small class="{{ $colorText }}">({{ $service->name }},</small></strong>
-                                                    @else
-                                                        <strong><small class="{{ $colorText }}">{{ $service->name }},</small></strong>
-                                                    @endif
+                        {{-- Tab Content --}}
+                        <div class="tab-content" id="categoryTabContent">
+                            <div class="tab-pane fade show active" id="all" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <tbody>
+                                            @foreach($appointments as $appointment)
+                                                @php
+                                                    $appointmentCategories = $appointment->services->pluck('category')->filter()->unique()->implode(',');
+                                                @endphp
+                                                <tr class="appointment-row" data-categories="{{ $appointmentCategories }}" style="background-color: {{ ['scheduled' => '#ffbe471c', 'checked_in' => '#adff2f29', 'completed' => '#4ab6011c', 'cancelled' => '#ff000059'][$appointment->status->value] ?? 'transparent' }}">
+                                                    <td>
+                                                        <div class="row">
+                                                            <div class="col-6">
+                                                                <span class="font-weight-bold {{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $appointment->customer->name ?? 'Müşteri Yok' }}</span>
+                                                                <span class="font-weight-bold {{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}"> - {{ $appointment->pet->name ?? 'Evcil Hayvan Yok ' }} |</span> 
+                                                                @foreach($appointment->services as $service)
+                                                                    @if ($appointment->services->count() == 1)
+                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">({{ $service->name }})</small></strong>
+                                                                    @elseif ($loop->last)
+                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $service->name }})</small></strong>
+                                                                    @elseif ($loop->first)
+                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">({{ $service->name }},</small></strong>
+                                                                    @else
+                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $service->name }},</small></strong>
+                                                                    @endif
 
-                                                    
-                                                    @endforeach
-                                                  </div>
-                                                    <div class="col-6">
-                                                    <div class="dateRange">
-                                                    @php
-                                                        // Use checkin_at if available, otherwise use planned_at
-                                                        $entryDate = $appointment->checkin_at 
-                                                            ? \Carbon\Carbon::parse($appointment->checkin_at)
-                                                            : \Carbon\Carbon::parse($appointment->planned_at);
-                                                            
-                                                        // Use checkout_at if available, otherwise use planned_exit if it exists
-                                                        $exitDate = $appointment->checkout_at 
-                                                            ? \Carbon\Carbon::parse($appointment->checkout_at)
-                                                            : ($appointment->planned_exit ? \Carbon\Carbon::parse($appointment->planned_exit) : null);
-                                                        
-                                                        // Set Turkish locale for day names
-                                                        \Carbon\Carbon::setLocale('tr');
-                                                        
-                                                        if ($exitDate) {
-                                                            if ($entryDate->isSameDay($exitDate)) {
-                                                                // Same day format: 15 Ekim Salı 17:00-20:00
-                                                                echo "<small><badge class='badge badge-$badgeStyle'>   ".$entryDate->isoFormat('D MMMM dddd HH:mm') . ' - ' . $exitDate->format('H:i')."</badge></small>";
-                                                            } else {
-                                                                // Different days format: 15 Ekim Salı 17:00 - 17 Ekim Cuma 20:00
-                                                                echo "<small><badge class='ml-1 badge badge-$badgeStyle '>".$entryDate->isoFormat('D MMMM dddd HH:mm') . "</badge></small>"."<small><badge class='ml-1 badge badge-$badgeStyle'>".$exitDate->isoFormat("D MMMM dddd HH:mm")."</badge></small>";
-                                                            }
-                                                        } else {
-                                                            // No exit date, just show entry date
-                                                            echo "<small><badge class='badge badge-$badgeStyle'>".$entryDate->isoFormat('D MMMM dddd HH:mm')."</badge></small>";
-                                                        }
-                                                    @endphp
-                                                    </div>
-                                                </div>
-                                               
-                                                   
-                                           <div class="col-6">
-                                                    @if($appointment->notes)
-                                                    <small class="{{ $colorText }} ">
-                                                        <i class="fas fa-info-circle " 
-                                                           data-toggle="tooltip" 
-                                                           title="{{ $appointment->notes }}" 
-                                                           style="cursor: pointer;">
-                                                        </i>
-                                                         {{$appointment->notes}}
-                                                         </small>
-                                                    @endif
-                                            </div>
-                                            <div class="col-12 mt-4">
-                                                    <a href="{{ route('appointments.show', $appointment) }}" 
-                                                       class="btn btn-xs  btn-{{$badgeStyle}}" title="Detay">
-                                                        <i class="fas fa-eye"></i> Detay
-                                                    </a>
-                                                    
-                                                    @if($appointment->status->value === 'scheduled')
-                                                            <a href="{{ route('appointments.checkin', $appointment) }}" class="btn btn-xs btn-success" title="Check-in Yap">
-                                                                <i class="fas fa-sign-in-alt"></i> Check-in
-                                                            </a>
-                                                    @elseif($appointment->status->value === 'checked_in')
-                                                            <a href="{{ route('appointments.checkout', $appointment) }}" class="btn btn-xs btn-info" title="Checkout Yap">
-                                                                <i class="fas fa-sign-out-alt"></i> Checkout
-                                                    </a>
-                                                    @endif
-                                            </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-footer clearfix">
-                                <div class="float-right">
-                                    @if($appointments->hasPages())
-                                    <div class="mt-3 d-flex justify-content-center">
-                                        {{ $appointments->onEachSide(1)->links('pagination::bootstrap-4') }}
-                                    </div>
-                                    @endif
+                                                                    
+                                                                    @endforeach
+                                                                  </div>
+                                                                    <div class="col-6">
+                                                                    <div class="dateRange">
+                                                                    @php
+                                                                        // Use checkin_at if available, otherwise use planned_at
+                                                                        $entryDate = $appointment->checkin_at 
+                                                                            ? \Carbon\Carbon::parse($appointment->checkin_at)
+                                                                            : \Carbon\Carbon::parse($appointment->planned_at);
+                                                                            
+                                                                        // Use checkout_at if available, otherwise use planned_exit if it exists
+                                                                        $exitDate = $appointment->checkout_at 
+                                                                            ? \Carbon\Carbon::parse($appointment->checkout_at)
+                                                                            : ($appointment->planned_exit ? \Carbon\Carbon::parse($appointment->planned_exit) : null);
+                                                                        
+                                                                        // Set Turkish locale for day names
+                                                                        \Carbon\Carbon::setLocale('tr');
+                                                                        
+                                                                        if ($exitDate) {
+                                                                            if ($entryDate->isSameDay($exitDate)) {
+                                                                                // Same day format: 15 Ekim Salı 17:00-20:00
+                                                                                echo "<small><badge class='badge badge-primary'>".$entryDate->isoFormat('D MMMM dddd HH:mm') . ' - ' . $exitDate->format('H:i')."</badge></small>";
+                                                                            } else {
+                                                                                // Different days format: 15 Ekim Salı 17:00 - 17 Ekim Cuma 20:00
+                                                                                echo "<small><badge class='ml-1 badge badge-primary'>".$entryDate->isoFormat('D MMMM dddd HH:mm')."</badge></small>"."<small><badge class='ml-1 badge badge-primary'>".$exitDate->isoFormat("D MMMM dddd HH:mm")."</badge></small>";
+                                                                            }
+                                                                        } else {
+                                                                            // No exit date, just show entry date
+                                                                            echo "<small><badge class='badge badge-primary'>".$entryDate->isoFormat('D MMMM dddd HH:mm')."</badge></small>";
+                                                                        }
+                                                                    @endphp
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                       
+                                                           <div class="col-6">
+                                                                @if($appointment->notes)
+                                                                <small class="">
+                                                                    <i class="fas fa-info-circle " 
+                                                                       data-toggle="tooltip" 
+                                                                       title="{{ $appointment->notes }}" 
+                                                                       style="cursor: pointer;">
+                                                                    </i>
+                                                                     {{$appointment->notes}}
+                                                                     </small>
+                                                                @endif
+                                                        </div>
+                                                        <div class="col-12 mt-4">
+                                                                <a href="{{ route('appointments.show', $appointment) }}" 
+                                                                   class="btn btn-xs  btn-primary">
+                                                                    <i class="fas fa-eye"></i> Detay
+                                                                </a>
+                                                                
+                                                                @if($appointment->status->value === 'scheduled')
+                                                                        <a href="{{ route('appointments.checkin', $appointment) }}" class="btn btn-xs btn-success" title="Check-in Yap">
+                                                                            <i class="fas fa-sign-in-alt"></i> Check-in
+                                                                        </a>
+                                                                @elseif($appointment->status->value === 'checked_in')
+                                                                        <a href="{{ route('appointments.checkout', $appointment) }}" class="btn btn-xs btn-info" title="Checkout Yap">
+                                                                            <i class="fas fa-sign-out-alt"></i> Checkout
+                                                                </a>
+                                                                @endif
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                        
                                 </div>
                             </div>
-                        @else
-                            <div class="text-center p-4">
-                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Seçilen tarih ve filtre kriterlerine uygun randevu bulunamadı.</p>
+                            @foreach($categories as $cat)
+                                        @php
+                                            $catCount = isset($categoryAppointmentCounts[$cat]) ? count($categoryAppointmentCounts[$cat]) : 0;
+                                        @endphp
+                                        @if($catCount > 0)
+                                        <div class="tab-pane fade" id="{{ Str::slug($cat) }}" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <tbody>
+                                                        @foreach($appointments as $appointment)
+                                                            @php
+                                                                $appointmentCategories = $appointment->services->pluck('category')->filter()->unique()->implode(',');
+                                                            @endphp
+                                                            @if(in_array($cat, explode(',', $appointmentCategories)))
+                                                                <tr class="appointment-row" data-categories="{{ $appointmentCategories }}" style="background-color: {{ ['scheduled' => '#ffbe471c', 'checked_in' => '#adff2f29', 'completed' => '#4ab6011c', 'cancelled' => '#ff000059'][$appointment->status->value] ?? 'transparent' }}">
+                                                                    <td>
+                                                                        <div class="row">
+                                                                            <div class="col-6">
+                                                                                <span class="font-weight-bold {{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $appointment->customer->name ?? 'Müşteri Yok' }}</span>
+                                                                                <span class="font-weight-bold {{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}"> - {{ $appointment->pet->name ?? 'Evcil Hayvan Yok ' }} |</span> 
+                                                                                @foreach($appointment->services as $service)
+                                                                                    @if ($appointment->services->count() == 1)
+                                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">({{ $service->name }})</small></strong>
+                                                                                    @elseif ($loop->last)
+                                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $service->name }})</small></strong>
+                                                                                    @elseif ($loop->first)
+                                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">({{ $service->name }},</small></strong>
+                                                                                    @else
+                                                                                        <strong><small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }}">{{ $service->name }},</small></strong>
+                                                                                    @endif
+
+                                                                                    
+                                                                                    @endforeach
+                                                                                  </div>
+                                                                                    <div class="col-6">
+                                                                                    <div class="dateRange">
+                                                                                    @php
+                                                                                        // Use checkin_at if available, otherwise use planned_at
+                                                                                        $entryDate = $appointment->checkin_at 
+                                                                                            ? \Carbon\Carbon::parse($appointment->checkin_at)
+                                                                                            : \Carbon\Carbon::parse($appointment->planned_at);
+                                                                                            
+                                                                                        // Use checkout_at if available, otherwise use planned_exit if it exists
+                                                                                        $exitDate = $appointment->checkout_at 
+                                                                                            ? \Carbon\Carbon::parse($appointment->checkout_at)
+                                                                                            : ($appointment->planned_exit ? \Carbon\Carbon::parse($appointment->planned_exit) : null);
+                                                                                        
+                                                                                        // Set Turkish locale for day names
+                                                                                        \Carbon\Carbon::setLocale('tr');
+                                                                                        
+                                                                                        if ($exitDate) {
+                                                                                            if ($entryDate->isSameDay($exitDate)) {
+                                                                                                // Same day format: 15 Ekim Salı 17:00-20:00
+                                                                                                echo "<small><badge class='badge badge-primary'> ".$entryDate->isoFormat('D MMMM dddd HH:mm') . ' - ' . $exitDate->format('H:i')."</badge></small>";
+                                                                                            } else {
+                                                                                                // Different days format: 15 Ekim Salı 17:00 - 17 Ekim Cuma 20:00
+                                                                                                echo "<small><badge class='ml-1 badge badge-primary'>".$entryDate->isoFormat('D MMMM dddd HH:mm') . "</badge></small>"."<small><badge class='ml-1 badge badge-primary'>".$exitDate->isoFormat("D MMMM dddd HH:mm")."</badge></small>";
+                                                                                            }
+                                                                                        } else {
+                                                                                            // No exit date, just show entry date
+                                                                                            echo "<small><badge class='badge badge-primary'>".$entryDate->isoFormat('D MMMM dddd HH:mm')."</badge></small>";
+                                                                                        }
+                                                                                    @endphp
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                       
+                                                                           <div class="col-6">
+                                                                                @if($appointment->notes)
+                                                                                <small class="{{ ['scheduled' => 'text-gray', 'checked_in' => 'text-green', 'completed' => 'text-blue', 'cancelled' => 'text-red'][$appointment->status->value] ?? $appointment->status->value }} ">
+                                                                                    <i class="fas fa-info-circle " 
+                                                                                       data-toggle="tooltip" 
+                                                                                       title="{{ $appointment->notes }}" 
+                                                                                       style="cursor: pointer;">
+                                                                                    </i>
+                                                                                     {{$appointment->notes}}
+                                                                                     </small>
+                                                                                @endif
+                                                                            </div>
+                                                                            <div class="col-12 mt-4">
+                                                                                <a href="{{ route('appointments.show', $appointment) }}" 
+                                                                                   class="btn btn-xs  btn-primary">
+                                                                                    <i class="fas fa-eye"></i> Detay
+                                                                                </a>
+                                                                                
+                                                                                @if($appointment->status->value === 'scheduled')
+                                                                                        <a href="{{ route('appointments.checkin', $appointment) }}" class="btn btn-xs btn-success" title="Check-in Yap">
+                                                                                            <i class="fas fa-sign-in-alt"></i> Check-in
+                                                                                        </a>
+                                                                                @elseif($appointment->status->value === 'checked_in')
+                                                                                        <a href="{{ route('appointments.checkout', $appointment) }}" class="btn btn-xs btn-info" title="Checkout Yap">
+                                                                                            <i class="fas fa-sign-out-alt"></i> Checkout
+                                                                                </a>
+                                                                                @endif
+                                                                            </div>
+                                                                                </td>
+                                                                            </tr>
+                                                                @endif
+                                                            @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                            @endif
+                                            @endforeach
+                                        </div>
+                                   
+                               
+                            
+                        </div>
+                        
+                        {{-- Pagination --}}
+                        @if($appointments->hasPages())
+                        <div class="card-footer clearfix">
+                            <div class="float-right">
+                                <div class="mt-3 d-flex justify-content-center">
+                                    {{ $appointments->onEachSide(1)->links('pagination::bootstrap-4') }}
+                                </div>
                             </div>
+                        </div>
                         @endif
-                    </div>
-                </div>
+                    @else
+                        <div class="text-center p-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Seçilen tarih aralığına uygun randevu bulunamadı.</p>
+                        </div>
+                    @endif
+                
             </div>
         </div>
-        
+           
         <!-- Yeni Personel Tablosu -->
         <div class="col-md-6">
             <div class="card">
@@ -508,6 +626,7 @@
             </div>
         </div>
     </div>
+    
 @stop
 
 @push('css')
@@ -541,6 +660,21 @@
             $('[data-toggle="tooltip"]').tooltip({
                 placement: 'top',
                 html: true
+            });
+            
+            // Tab-based filtering
+            $('#categoryTabs a').on('click', function (e) {
+                e.preventDefault();
+                $(this).tab('show');
+                
+                var category = $(this).data('category');
+                $('.appointment-row').hide();
+                
+                if (category === 'all') {
+                    $('.appointment-row').show();
+                } else {
+                    $('.appointment-row[data-categories*="' + category + '"]').show();
+                }
             });
         });
     </script>
