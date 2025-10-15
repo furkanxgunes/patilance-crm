@@ -8,7 +8,7 @@ use App\Models\Appointment;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index_old()
     {
         // Randevuları ilgili modellerle birlikte çekin
         $appointments = Appointment::with(['customer', 'pet', 'services'])->get();
@@ -70,6 +70,227 @@ class DashboardController extends Controller
         ];
 
         return view('dashboard', compact('events', 'colorLegend', 'scheduledAppointments', 'activeAppointments', 'services', 'completedAppointments'));
+    }
+
+    public function index_new(Request $request)
+    {
+        // Filtre parametrelerini al
+        $startDate = $request->input('start_date', now()->format('Y-m-d'));
+        $endDate = $request->input('end_date', now()->format('Y-m-d'));
+        $category = $request->input('category', 'all');
+        
+        // Tüm hizmet kategorilerini getir
+        $categories = \App\Models\Service::select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
+        // Ana sorgu
+        $query = Appointment::with(['customer', 'pet', 'services'])
+            ->where(function($q) use ($startDate, $endDate) {
+                // Tarih aralığını sonraki günün başına ayarla (00:00:00)
+                $start = $startDate . ' 00:00:00';
+                $end = $endDate . ' 23:59:59';
+                
+                $q->where(function($q) use ($start, $end) {
+                    // Durum 1: Giriş tarihi aralık içinde
+                    $q->where(function($q) use ($start, $end) {
+                        $q->whereNotNull('checkin_at')
+                          ->whereBetween('checkin_at', [$start, $end]);
+                    })->orWhere(function($q) use ($start, $end) {
+                        $q->whereNull('checkin_at')
+                          ->whereBetween('planned_at', [$start, $end]);
+                    });
+                })->orWhere(function($q) use ($start, $end) {
+                    // Durum 2: Çıkış tarihi aralık içinde
+                    $q->whereNotNull('checkout_at')
+                      ->whereBetween('checkout_at', [$start, $end]);
+                })->orWhere(function($q) use ($start, $end) {
+                    $q->whereNull('checkout_at')
+                      ->whereBetween('planned_exit', [$start, $end]);
+                })->orWhere(function($q) use ($start, $end) {
+                    // Durum 3: Randevu aralığı seçilen aralığı tamamen kapsıyorsa
+                    $q->where(function($q) use ($start) {
+                        $q->where(function($q) use ($start) {
+                            $q->whereNotNull('checkin_at')
+                              ->where('checkin_at', '<=', $start);
+                        })->orWhere(function($q) use ($start) {
+                            $q->whereNull('checkin_at')
+                              ->where('planned_at', '<=', $start);
+                        });
+                    })->where(function($q) use ($end) {
+                        $q->where(function($q) use ($end) {
+                            $q->whereNotNull('checkout_at')
+                              ->where('checkout_at', '>=', $end);
+                        })->orWhere(function($q) use ($end) {
+                            $q->whereNull('checkout_at')
+                              ->where('planned_exit', '>=', $end);
+                        });
+                    });
+                });
+            })
+            ->orderByRaw("
+            CASE
+                WHEN status = 'checked_in' THEN 1
+                WHEN status = 'scheduled' THEN 2
+                WHEN status = 'completed' THEN 3
+                WHEN status = 'cancelled' THEN 4
+                ELSE 5
+            END ASC,
+            CASE
+                WHEN status IN ('checked_in', 'scheduled') THEN COALESCE(checkin_at, planned_at)
+                ELSE checkout_at
+            END ASC
+        ");
+
+        // Kategori filtresini uygula
+        if ($category !== 'all' && $categories->contains($category)) {
+            $query->whereHas('services', function($q) use ($category) {
+                $q->where('category', $category);
+            });
+        }
+        
+        // Sayfalama ile sonuçları al
+        $appointments = $query->paginate(15)->withQueryString();
+        
+        // Önceki ve sonraki günler için hesaplamalar
+        $date = \Carbon\Carbon::parse($startDate);
+        $yesterday = $date->copy()->subDay()->format('Y-m-d');
+        $tomorrow = $date->copy()->addDay()->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+
+      
+        return view('dashboard2', compact(
+            'appointments',
+            'categories',
+            'startDate',
+            'endDate',
+            'yesterday',
+            'tomorrow',
+            'today',
+            'category',
+        ));
+    }
+
+    public function index(Request $request)
+    {
+        // Filtre parametrelerini al
+        $startDate = $request->input('start_date', now()->format('Y-m-d'));
+        $endDate = $request->input('end_date', now()->format('Y-m-d'));
+        $category = $request->input('category', 'all');
+        
+        // Tüm hizmet kategorilerini getir
+        $categories = \App\Models\Service::select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
+        // Ana sorgu
+        $query = Appointment::with(['customer', 'pet', 'services'])
+            ->where(function($q) use ($startDate, $endDate) {
+                // Tarih aralığını sonraki günün başına ayarla (00:00:00)
+                $start = $startDate . ' 00:00:00';
+                $end = $endDate . ' 23:59:59';
+                
+                $q->where(function($q) use ($start, $end) {
+                    // Durum 1: Giriş tarihi aralık içinde
+                    $q->where(function($q) use ($start, $end) {
+                        $q->whereNotNull('checkin_at')
+                          ->whereBetween('checkin_at', [$start, $end]);
+                    })->orWhere(function($q) use ($start, $end) {
+                        $q->whereNull('checkin_at')
+                          ->whereBetween('planned_at', [$start, $end]);
+                    });
+                })->orWhere(function($q) use ($start, $end) {
+                    // Durum 2: Çıkış tarihi aralık içinde
+                    $q->whereNotNull('checkout_at')
+                      ->whereBetween('checkout_at', [$start, $end]);
+                })->orWhere(function($q) use ($start, $end) {
+                    $q->whereNull('checkout_at')
+                      ->whereBetween('planned_exit', [$start, $end]);
+                })->orWhere(function($q) use ($start, $end) {
+                    // Durum 3: Randevu aralığı seçilen aralığı tamamen kapsıyorsa
+                    $q->where(function($q) use ($start) {
+                        $q->where(function($q) use ($start) {
+                            $q->whereNotNull('checkin_at')
+                              ->where('checkin_at', '<=', $start);
+                        })->orWhere(function($q) use ($start) {
+                            $q->whereNull('checkin_at')
+                              ->where('planned_at', '<=', $start);
+                        });
+                    })->where(function($q) use ($end) {
+                        $q->where(function($q) use ($end) {
+                            $q->whereNotNull('checkout_at')
+                              ->where('checkout_at', '>=', $end);
+                        })->orWhere(function($q) use ($end) {
+                            $q->whereNull('checkout_at')
+                              ->where('planned_exit', '>=', $end);
+                        });
+                    });
+                });
+            })
+            ->orderByRaw("
+            CASE
+                WHEN status = 'checked_in' THEN 1
+                WHEN status = 'scheduled' THEN 2
+                WHEN status = 'completed' THEN 3
+                WHEN status = 'cancelled' THEN 4
+                ELSE 5
+            END ASC,
+            CASE
+                WHEN status IN ('checked_in', 'scheduled') THEN COALESCE(checkin_at, planned_at)
+                ELSE checkout_at
+            END ASC
+        ");
+
+        // Kategori filtresini uygula
+        if ($category !== 'all' && $categories->contains($category)) {
+            $query->whereHas('services', function($q) use ($category) {
+                $q->where('category', $category);
+            });
+        }
+        
+        // Sayfalama ile sonuçları al
+        $appointments = $query->paginate(15)->withQueryString();
+        
+        // Önceki ve sonraki günler için hesaplamalar
+        $date = \Carbon\Carbon::parse($startDate);
+        $yesterday = $date->copy()->subDay()->format('Y-m-d');
+        $tomorrow = $date->copy()->addDay()->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+
+      
+        return view('dashboard2', compact(
+            'appointments',
+            'categories',
+            'startDate',
+            'endDate',
+            'yesterday',
+            'tomorrow',
+            'today',
+            'category',
+        ));
+    }
+
+
+    /**
+     * Get appointment count for a specific status and category
+     */
+    private function getAppointmentCount($date, $status, $category = 'all')
+    {
+        $query = Appointment::whereDate('planned_at', $date);
+        
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        
+        if ($category !== 'all') {
+            $query->whereHas('services', function($q) use ($category) {
+                $q->where('category', $category);
+            });
+        }
+        
+        return $query->count();
     }
 
     private function getEventColor(string $status): string

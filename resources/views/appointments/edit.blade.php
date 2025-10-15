@@ -219,7 +219,6 @@
 @stop
 
 @push('js')
-@push('js')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const customers = @json($customers);
@@ -411,12 +410,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Hizmet Arama ---
     const serviceSearch = document.getElementById('service-search');
-    if(serviceSearch && serviceList) {
-        serviceSearch.addEventListener('input', function(){
-            const term = this.value.toLowerCase();
-            document.querySelectorAll('.service-item').forEach(item => {
-                const name = item.dataset.serviceName;
-                item.style.display = name.includes(term) ? 'flex' : 'none';
+    if (serviceSearch && serviceList) {
+        // Türkçe karakterleri normalize eden yardımcı fonksiyon
+        function normalizeTurkish(text) {
+            return String(text || '')
+                .toLowerCase()
+                .replace(/ı/g, 'i')
+                .replace(/ğ/g, 'g')
+                .replace(/ü/g, 'u')
+                .replace(/ş/g, 's')
+                .replace(/ö/g, 'o')
+                .replace(/ç/g, 'c');
+        }
+
+        serviceSearch.addEventListener('input', function() {
+            const searchTerm = normalizeTurkish(this.value);
+            const serviceItems = serviceList.querySelectorAll('.service-item');
+            
+            serviceItems.forEach(item => {
+                const serviceName = item.getAttribute('data-service-name') || '';
+                if (searchTerm === '' || normalizeTurkish(serviceName).includes(searchTerm)) {
+                    item.classList.remove('d-none');
+                } else {
+                    item.classList.add('d-none');
+                }
             });
         });
     }
@@ -433,4 +450,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-

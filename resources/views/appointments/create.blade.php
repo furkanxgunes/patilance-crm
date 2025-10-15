@@ -48,10 +48,17 @@
                     <div class="form-group row">
     <label class="col-sm-3 col-form-label">Hizmetler</label>
     <div class="col-sm-9">
-        <div class="d-flex mb-2 ml-1 mr-1">
-        
-                <button type="button" id="select-all-services" class="btn btn-outline-primary mr-1">Tümünü Seç</button>
-                <button type="button" id="clear-all-services" class="btn btn-outline-secondary mr-1">Temizle</button>
+        <div class="d-flex flex-wrap mb-2 ml-1 mr-1">
+            <div class="input-group input-group-sm mb-2" style="width: 250px;">
+                <div class="input-group-prepend">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                </div>
+                <input type="text" id="service-search" class="form-control" placeholder="Hizmet ara...">
+            </div>
+            <div class="ml-auto">
+                <button type="button" id="select-all-services" class="btn btn-outline-primary btn-sm mr-1">Tümünü Seç</button>
+                <button type="button" id="clear-all-services" class="btn btn-outline-secondary btn-sm">Temizle</button>
+            </div>
         </div>
 
         <div id="service-list" class="border rounded p-2" style="max-height: 400px; overflow:auto;">
@@ -466,6 +473,34 @@
                     if (found) cpInput.value = found.label;
                 }
             })();
+
+            // Hizmet arama işlevselliği
+            const serviceSearch = document.getElementById('service-search');
+
+            // Türkçe karakterleri normalize eden yardımcı fonksiyon
+            function normalizeTurkish(text) {
+                return text
+                    .toLowerCase()
+                    .replace(/ı/g, 'i')
+                    .replace(/ğ/g, 'g')
+                    .replace(/ü/g, 'u')
+                    .replace(/ş/g, 's')
+                    .replace(/ö/g, 'o')
+                    .replace(/ç/g, 'c');
+            }
+
+            serviceSearch.addEventListener('input', function(e) {
+                const searchTerm = normalizeTurkish(e.target.value.trim());
+                
+                serviceItems.forEach(item => {
+                    const serviceName = item.getAttribute('data-service-name') || '';
+                    if (normalizeTurkish(serviceName).includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
 
     });
 async function fetchLastNote(customerId) {

@@ -19,6 +19,29 @@ class AppointmentController extends Controller
     {
         $q = $request->string('q')->toString();
         $status = $request->string('status')->toString();
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $dateFilter = $request->input('date_filter');
+
+        // Handle date filters
+        if ($dateFilter) {
+            $now = now();
+            switch ($dateFilter) {
+                case 'today':
+                    $startDate = $now->format('Y-m-d');
+                    $endDate = $now->format('Y-m-d');
+                    break;
+                case 'week':
+                    $startDate = $now->startOfWeek()->format('Y-m-d');
+                    $endDate = $now->endOfWeek()->format('Y-m-d');
+                    break;
+                case 'month':
+                    $startDate = $now->startOfMonth()->format('Y-m-d');
+                    $endDate = $now->endOfMonth()->format('Y-m-d');
+                    break;
+            }
+        }
+
         $query = Appointment::with(['customer', 'pet', 'services'])
             ->when($q, function ($qBuilder) use ($q) {
                 $qBuilder->where(function ($sub) use ($q) {
@@ -34,11 +57,55 @@ class AppointmentController extends Controller
             ->when($status, function ($qBuilder) use ($status) {
                 $qBuilder->where('status', $status);
             })
-            ->orderBy('planned_at', 'desc');
+            ->when($startDate || $endDate, function ($q) use ($startDate, $endDate) {
+                if ($startDate && $endDate) {
+                    // Show appointments that overlap with the selected date range
+                    $q->where(function($q) use ($startDate, $endDate) {
+                        // Check if any part of the appointment is within the date range
+                        $q->where(function($q) use ($startDate, $endDate) {
+                            // Appointments that start before or on the end date AND end after or on the start date
+                            $q->where(function($q) use ($startDate, $endDate) {
+                                $q->where('planned_at', '<=', $endDate . ' 23:59:59')
+                                  ->where('planned_exit', '>=', $startDate . ' 00:00:00');
+                            })->orWhere(function($q) use ($startDate, $endDate) {
+                                // Also include appointments with actual check-in/check-out times
+                                $q->where('checkin_at', '<=', $endDate . ' 23:59:59')
+                                  ->where('checkout_at', '>=', $startDate . ' 00:00:00');
+                            });
+                        });
+                    });
+                } elseif ($startDate) {
+                    // Only start date is provided - filter by check-in or planned date
+                    $q->where(function($q) use ($startDate) {
+                        $q->whereDate('checkin_at', '>=', $startDate)
+                          ->orWhereDate('planned_at', '>=', $startDate);
+                    });
+                } elseif ($endDate) {
+                    // Only end date is provided - filter by check-out or planned exit date
+                    $q->where(function($q) use ($endDate) {
+                        $q->whereDate('checkout_at', '<=', $endDate)
+                          ->orWhereDate('planned_exit', '<=', $endDate);
+                    });
+                }
+            })
+            ->orderByRaw("CASE 
+                WHEN status IN ('scheduled', 'checked_in') THEN 1 
+                ELSE 2 
+            END")
+            ->orderByRaw('COALESCE(checkin_at, planned_at) ASC');
         
-        $appointments = $query->paginate(10)->withQueryString();
+        $appointments = $query->paginate(20)->withQueryString();
         $statuses = AppointmentStatus::cases();
-        return view('appointments.index', compact('appointments', 'statuses', 'q', 'status'));
+        
+        return view('appointments.index', compact(
+            'appointments', 
+            'statuses', 
+            'q', 
+            'status', 
+            'startDate', 
+            'endDate',
+            'dateFilter'
+        ));
     }
 
     /**

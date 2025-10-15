@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SegmentController;
 use App\Http\Controllers\BreedController;
 use App\Http\Controllers\WhatsAppWebhookController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -30,6 +31,10 @@ Route::get('/home', function () {
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::get('/dashboard2', [DashboardController::class, 'index_new'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard2');
 
 Route::get('/chat/{wa_id}', [ChatController::class, 'show'])->name('chat.show');
 
@@ -96,6 +101,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/breeds', [BreedController::class, 'store'])->name('breeds.store');
     Route::put('/breeds/{breed}', [BreedController::class, 'update'])->name('breeds.update');
     Route::delete('/breeds/{breed}', [BreedController::class, 'destroy'])->name('breeds.destroy');
+    Route::get('breeds/{type}', [BreedController::class, 'getBreedsByType'])->name('breeds.by-type');
+    
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('/mark-as-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::get('/fetch', [NotificationController::class, 'fetch'])->name('notifications.fetch');
+    });
 
 // Segmentler
 Route::prefix('segments')->name('segments.')->group(function () {

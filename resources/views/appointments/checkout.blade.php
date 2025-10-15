@@ -63,16 +63,28 @@ document.addEventListener('DOMContentLoaded', function(){
     
     // Hizmet arama
     if (serviceSearch && serviceList) {
-        serviceSearch.addEventListener('input', function(){
-            const searchTerm = this.value.toLowerCase();
+        // Türkçe karakterleri normalize eden yardımcı fonksiyon
+        function normalizeTurkish(text) {
+            return String(text || '')
+                .toLowerCase()
+                .replace(/ı/g, 'i')
+                .replace(/ğ/g, 'g')
+                .replace(/ü/g, 'u')
+                .replace(/ş/g, 's')
+                .replace(/ö/g, 'o')
+                .replace(/ç/g, 'c');
+        }
+
+        serviceSearch.addEventListener('input', function() {
+            const searchTerm = normalizeTurkish(this.value);
             const serviceItems = serviceList.querySelectorAll('.service-item');
             
             serviceItems.forEach(item => {
-                const serviceName = item.getAttribute('data-service-name');
-                if (serviceName.includes(searchTerm)) {
-                    item.style.display = 'flex';
+                const serviceName = item.getAttribute('data-service-name') || '';
+                if (searchTerm === '' || normalizeTurkish(serviceName).includes(searchTerm)) {
+                    item.classList.remove('d-none');
                 } else {
-                    item.style.display = 'none';
+                    item.classList.add('d-none');
                 }
             });
         });

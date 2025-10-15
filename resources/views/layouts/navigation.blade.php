@@ -40,6 +40,82 @@
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
+                <!-- Notifications Bell (Tailwind + Alpine, no jQuery) -->
+                <div x-data="notificationBell()" x-init="init()" class="relative mr-4">
+                    <button @click="open = !open" type="button" class="relative inline-flex items-center p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 focus:outline-none" aria-expanded="false" aria-haspopup="true">
+                        <!-- Heroicon: Bell -->
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                        <span x-show="count > 0" x-text="count" class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full"></span>
+                    </button>
+
+                    <!-- Dropdown panel -->
+                    <div x-show="open" @click.away="open = false" x-cloak class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                        <div class="py-2 max-h-96 overflow-auto">
+                            <div class="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200" x-text="count > 0 ? (count + ' Yeni Bildirim') : 'Yeni bildiriminiz yok'"></div>
+                            <template x-if="items.length === 0">
+                                <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Yeni bildiriminiz yok</div>
+                            </template>
+                            <template x-for="item in items" :key="item.id">
+                                <a :href="item.url" @click.prevent="markAsReadThenGo(item)" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="font-medium text-gray-800 dark:text-gray-100" x-text="item.title"></span>
+                                        <span class="text-xs text-gray-500" x-text="item.time"></span>
+                                    </div>
+                                    <div class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-text="item.message"></div>
+                                </a>
+                            </template>
+                        </div>
+                        <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
+                            <a href="{{ route('notifications.index') }}" class="text-sm text-blue-600 hover:underline">Tüm Bildirimleri Gör</a>
+                            <button @click="markAllAsRead()" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Tümünü okundu işaretle</button>
+                        </div>
+                    </div>
+
+                    <script>
+                        function notificationBell() {
+                            return {
+                                open: false,
+                                count: 0,
+                                items: [],
+                                init() {
+                                    this.refresh();
+                                    // 45 saniyede bir güncelle
+                                    setInterval(() => this.refresh(), 45000);
+                                },
+                                async refresh() {
+                                    try {
+                                        const [countRes, itemsRes] = await Promise.all([
+                                            fetch('{{ route('notifications.unread-count') }}'),
+                                            fetch('{{ route('notifications.fetch') }}')
+                                        ]);
+                                        const countJson = await countRes.json();
+                                        const itemsJson = await itemsRes.json();
+                                        this.count = countJson.count ?? 0;
+                                        this.items = Array.isArray(itemsJson) ? itemsJson : [];
+                                    } catch (e) {
+                                        // Sessizce geç
+                                    }
+                                },
+                                async markAsReadThenGo(item) {
+                                    if (item && item.id && !String(item.id).startsWith('appt_')) {
+                                        try { await fetch(`/notifications/mark-as-read/${item.id}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content } }); } catch (e) {}
+                                    }
+                                    window.location.href = item.url || '#';
+                                },
+                                async markAllAsRead() {
+                                    try {
+                                        await fetch('{{ route('notifications.mark-all-read') }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content } });
+                                        this.count = 0;
+                                        // öğelerde read_at alanı varsa güncelleyebiliriz, sadeleştiriyoruz
+                                    } catch (e) {}
+                                }
+                            }
+                        }
+                    </script>
+                </div>
+                
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">

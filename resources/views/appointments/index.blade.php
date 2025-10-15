@@ -51,7 +51,7 @@
 
                 <div class="d-flex justify-content-between mb-3">
                     <form method="GET" action="{{ route('appointments.index') }}" class="form-inline">
-                        <div class="input-group mr-2">
+                        <div class="input-group mr-2 p-1">
                             <input type="text" name="q" value="{{ $q ?? '' }}" class="form-control" placeholder="Müşteri, pet adı veya #ID">
                         </div>
                         <div class="input-group mr-2">
@@ -74,27 +74,112 @@
                                 @endforeach
                             </select>
                         </div>
-                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                        <div class="input-group mr-2 p-1">
+                            <input type="date" name="start_date" value="{{ $startDate ?? '' }}" class="form-control" placeholder="Başlangıç">
+                            <input type="date" name="end_date" value="{{ $endDate ?? '' }}" class="form-control ml-1" placeholder="Bitiş">
+                        </div>
+                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i> Ara</button>
                         <a href="{{ route('appointments.index') }}" class="btn btn-outline-light ml-2">Temizle</a>
                     </form>
-                    <a href="{{ route('appointments.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Yeni Randevu Ekle
-                    </a>
+                   
                 </div>
-                
+                <div class="button-group row">
+                    @php
+                        // Determine active filter based on URL parameters
+                        $activeFilter = request('date_filter');
+                        $startDate = request('start_date');
+                        $endDate = request('end_date');
+                        $now = now();
+                        
+                        if (!$activeFilter && $startDate && $endDate) {
+                            $start = \Carbon\Carbon::parse($startDate);
+                            $end = \Carbon\Carbon::parse($endDate);
+                            
+                            if ($start->isSameDay($end)) {
+                                // Check if it's today
+                                if ($start->isToday()) {
+                                    $activeFilter = 'today';
+                                }
+                            } else {
+                                // Check if it's this week
+                                $weekStart = $now->copy()->startOfWeek();
+                                $weekEnd = $now->copy()->endOfWeek();
+                                if ($start->format('Y-m-d') === $weekStart->format('Y-m-d') && 
+                                    $end->format('Y-m-d') === $weekEnd->format('Y-m-d')) {
+                                    $activeFilter = 'week';
+                                } 
+                                // Check if it's this month
+                                elseif ($start->format('Y-m') === $now->format('Y-m') && 
+                                       $start->day === 1 && 
+                                       $end->format('Y-m-d') === $now->endOfMonth()->format('Y-m-d')) {
+                                    $activeFilter = 'month';
+                                }
+                            }
+                        }
+                    @endphp
+                    <div class="col-6">
+                        <div class="btn-group mb-1">
+                            <a href="{{ route('appointments.index', array_merge(request()->query(), ['date_filter' => 'today', 'start_date' => null, 'end_date' => null])) }}" 
+                               class="mr-1 btn btn-outline-primary {{ $activeFilter === 'today' ? 'active' : '' }}">
+                                <i class="fa fa-calendar-day"></i> <small>Bugün</small>
+                            </a>
+                            <a href="{{ route('appointments.index', array_merge(request()->query(), ['date_filter' => 'week', 'start_date' => null, 'end_date' => null])) }}" 
+                               class="mr-1 btn btn-outline-primary {{ $activeFilter === 'week' ? 'active' : '' }}">
+                                <i class="fa fa-calendar-week"></i> <small>Hafta</small>
+                            </a>    
+                            <a href="{{ route('appointments.index', array_merge(request()->query(), ['date_filter' => 'month', 'start_date' => null, 'end_date' => null])) }}" 
+                               class="btn btn-outline-primary {{ $activeFilter === 'month' ? 'active' : '' }}">
+                                <i class="far fa-calendar-alt"></i> <small>Ay</small>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-right mt-2 mt-md-0">
+                            <a href="{{ route('appointments.create') }}" class="btn btn-primary mb-3">
+                                <i class="fas fa-plus"></i> <small>Yeni Randevu Ekle</small>
+                            </a>
+                        </div>
+                    </div>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered">
                         <thead class="thead-dark">
                             <tr>
                                 <th>Müşteri</th>
                                 <th>Evcil Hayvan</th>
-                                <th>Check-in</th>
+                                <th>Randevu Tarihi</th>
                                 <th>Durum</th>
                                 <th style="width: 250px;">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($appointments as $appointment)
+                                @php
+                                    $checkIn = $appointment->checkin_at ?? $appointment->planned_at;
+                                    $checkOut = $appointment->checkout_at ?? $appointment->planned_exit;
+                                    
+                                    $startDate = $checkIn ? \Carbon\Carbon::parse($checkIn) : null;
+                                    $endDate = $checkOut ? \Carbon\Carbon::parse($checkOut) : null;
+                                    
+                                    $dateDisplay = '-'; // Default value
+                                    $isOverdue = false;
+
+                                    if ($startDate) {
+                                        if ($endDate) {
+                                            $isOverdue = $endDate->isPast() && $appointment->status !== \App\Enums\AppointmentStatus::COMPLETED;
+
+                                            if ($startDate->isSameDay($endDate)) {
+                                                // Same day: "12 Ekim Pazartesi 15:00-17:00"
+                                                $dateDisplay = $startDate->translatedFormat('d F l H:i') . '-' . $endDate->format('H:i');
+                                            } else {
+                                                // Different days: "12 Ekim Pazartesi 15:00 - 14 Ekim Salı 17:00"
+                                                $dateDisplay = $startDate->translatedFormat('d F l H:i').' - '.$endDate->translatedFormat('d F l H:i');
+                                            }
+                                        } else {
+                                            // Only start date available
+                                            $dateDisplay = $startDate->translatedFormat('d F l H:i');
+                                        }
+                                    }
+                                @endphp
                                 <tr>
                                     <td>
                                         @if ($appointment->customer)
@@ -114,7 +199,19 @@
                                             <span>-</span>
                                         @endif
                                     </td>
-                                    <td>{{ optional($appointment->checkin_at)->format('d.m.Y H:i') ?? optional($appointment->planned_at)->format('d.m.Y H:i') }}</td>
+                                    <td>
+                                        <small>
+                               
+                                    {{ $dateDisplay }}
+                                    @if($isOverdue) 
+                                     
+                                        <span class="text-danger" data-toggle="tooltip" 
+                                        data-placement="top" 
+                                        title="Bu randevunun çıkış tarihi geçmiş!">--Çıkış Tarihi Geçmiş</span>
+                                    @endif
+                                    
+                                        </small>
+                                    </td>
                                     <td>
                                         @php
                                             $theme = 'secondary';
@@ -172,7 +269,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center">Henüz hiç randevu oluşturulmamış.</td>
+                                    <td colspan="5" class="text-center">Henüz hiç randevu oluşturulmamış.</td>
                                 </tr>
                             @endforelse
                         </tbody>

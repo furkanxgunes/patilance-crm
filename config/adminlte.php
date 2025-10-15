@@ -245,6 +245,7 @@ return [
     'right_sidebar_scrollbar_theme' => 'os-theme-light',
     'right_sidebar_scrollbar_auto_hide' => 'l',
 
+  
     /*
     |--------------------------------------------------------------------------
     | URLs
@@ -301,11 +302,11 @@ return [
 
     'menu' => [
         // Navbar items:
-        // [
-        //     'type' => 'navbar-search',
-        //     'text' => 'search',
-        //     'topnav_right' => true,
-        // ],
+        [
+            'text' => '<x-notification-dropdown :user="auth()->user()" />',
+            'topnav_right' => true,
+            'topnav' => true,
+        ],
         [
             'type' => 'fullscreen-widget',
             'topnav_right' => true,
