@@ -22,6 +22,15 @@ class AppointmentController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $dateFilter = $request->input('date_filter');
+        $category = $request->input('category');
+
+        // Get all service categories for the filter tabs
+        $categories = \App\Models\Service::select('category')
+            ->distinct()
+            ->whereNotNull('category')
+            ->orderBy('category')
+            ->pluck('category')
+            ->prepend('Tümü');
 
         // Handle date filters
         if ($dateFilter) {
@@ -56,6 +65,11 @@ class AppointmentController extends Controller
             })
             ->when($status, function ($qBuilder) use ($status) {
                 $qBuilder->where('status', $status);
+            })
+            ->when($category && $category !== 'Tümü', function ($query) use ($category) {
+                $query->whereHas('services', function ($q) use ($category) {
+                    $q->where('category', $category);
+                });
             })
             ->when($startDate || $endDate, function ($q) use ($startDate, $endDate) {
                 if ($startDate && $endDate) {
@@ -104,7 +118,9 @@ class AppointmentController extends Controller
             'status', 
             'startDate', 
             'endDate',
-            'dateFilter'
+            'dateFilter',
+            'categories',
+            'category'
         ));
     }
 
@@ -841,6 +857,7 @@ class AppointmentController extends Controller
         $filename = 'hayvan-teslim-tutanagi-' . $appointment->id . '.pdf';
         return $pdf->stream($filename);
     }
+    
     public function deliveryPdfForWhatsApp(Appointment $appointment)
     {
     $appointment->load(['customer', 'pet', 'services']);
@@ -876,5 +893,13 @@ $path = storage_path('app/tmp/' . $filename);
 $pdf->save($path);
 
 return $path; // path'i döndürüyoruz ki WhatsApp serviste kullanabilelim
+
+
+}
+// get hizmet categories 
+// create function
+public function getCategories(Appointment $appointment){
+    $categories = $appointment->services->pluck('category')->unique();
+    return $categories;
 }
 }

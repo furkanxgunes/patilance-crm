@@ -48,9 +48,25 @@
                         {{ session('error') }}
                     </x-adminlte-alert>
                 @endif
-
+ <!-- Service Category Tabs -->
+ <div class="mb-3">
+                        <ul class="nav nav-tabs" id="serviceCategoryTabs" role="tablist">
+                            @foreach($categories as $cat)
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link {{ (request('category', 'Tümü') == $cat) ? 'active' : '' }}" 
+                                       href="{{ route('appointments.index', array_merge(request()->except('category'), ['category' => $cat == 'Tümü' ? null : $cat])) }}"
+                                       role="tab">
+                                        {{ $cat }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
                 <div class="d-flex justify-content-between mb-3">
+                   
+
                     <form method="GET" action="{{ route('appointments.index') }}" class="form-inline">
+                        <input type="hidden" name="category" value="{{ request('category', 'Tümü') }}">
                         <div class="input-group mr-2 p-1">
                             <input type="text" name="q" value="{{ $q ?? '' }}" class="form-control" placeholder="Müşteri, pet adı veya #ID">
                         </div>
@@ -195,8 +211,14 @@
                                             <a href="{{ route('pets.show', $appointment->pet->id) }}">
                                                 {{ $appointment->pet->name }}
                                             </a>
+                                            @if($appointment->services->isNotEmpty())
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{ $appointment->services->pluck('name')->implode(', ') }}
+                                                </small>
+                                            @endif
                                         @else
-                                            <span>-</span>
+                                            <span class="text-muted">Evcil hayvan silinmiş</span>
                                         @endif
                                     </td>
                                     <td>

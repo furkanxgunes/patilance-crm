@@ -401,12 +401,14 @@ return [
         'text' => 'Randevu Yönetimi', // Ana menü başlığı
         'icon' => 'fas fa-calendar-check',
         // 'can'  => 'manage-services', // İsteğe bağlı olarak yetkilendirme (authorization) için kullanılır
+        
         'submenu' => [
             [
                 'text' => 'Randevu Listesi',
                 'url'  => 'appointments', // veya 'route' => 'services.index'
                 'icon' => 'fas fa-fw fa-list',
             ],
+            //  use getCategories function
             [
                 'text' => 'Randevu Oluştur',
                 'url'  => 'appointments/create', // veya 'route' => 'services.create'

@@ -74,5 +74,14 @@ class Service extends Model
                     ->withTimestamps();
     }
     
-
+    // get categoires but unique example(Tümü, Bakım, Konaklama)    
+    public function getCategoriesAttribute()
+    {
+        return $this->categories()->pluck('name')->unique()->toArray();
+    }
+    
+    public static function getCategories()
+    {
+        return static::select('category')->distinct()->pluck('category');
+    }
 }

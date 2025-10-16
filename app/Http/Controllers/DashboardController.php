@@ -168,7 +168,8 @@ class DashboardController extends Controller
         // Filtre parametrelerini al
         $startDate = $request->input('start_date', now()->format('Y-m-d'));
         $endDate = $request->input('end_date', now()->format('Y-m-d'));
-        
+        $category = $request->input('category', 'all');
+
         // Tüm hizmet kategorilerini getir
         $categories = \App\Models\Service::select('category')
             ->distinct()
@@ -233,6 +234,13 @@ class DashboardController extends Controller
             END ASC
         ");
 
+        // Kategori filtresini uygula
+        if ($category !== 'all' && $categories->contains($category)) {
+            $query->whereHas('services', function($q) use ($category) {
+                $q->where('category', $category);
+            });
+        }
+
         // Sayfalama ile sonuçları al
         $appointments = $query->paginate(15)->withQueryString();
         
@@ -251,6 +259,7 @@ class DashboardController extends Controller
             'yesterday',
             'tomorrow',
             'today',
+            'category',
         ));
     }
 
