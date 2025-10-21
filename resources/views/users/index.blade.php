@@ -67,7 +67,21 @@
                                      
                                         @endif
                                     </div>
+                                @if($user->id != auth()->id() && (auth()->user()->role == 'admin' || auth()->user()->role == 'superadmin'))
+                                    @if($user->role == 'personel')
+                                    <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-danger delete-user" 
+                                    data-id="{{ $user->id }}"
+                                    data-name="{{ $user->name }}"
+                                    title="Sil"
+                                    data-toggle="tooltip">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                </div>
+                                    @endif                                
+                                @endif
                                 </td>
+                                 
                             </tr>
                         @endforeach
                     </tbody>
@@ -122,26 +136,11 @@
 @stop
 
 @section('js')
-    <!-- DataTables & Plugins -->
-    <script src="{{ asset('vendor/datatables/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
+
     
     <script>
         $(function () {
-            // DataTable ayarları
-            $('#usersTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Turkish.json"
-                },
-                "order": [[0, "desc"]],
-                "responsive": true,
-                "autoWidth": false,
-                "columnDefs": [
-                    { "orderable": false, "targets": [6] } // Son sütun sıralanabilir olmasın
-                ]
-            });
+           
             
             // Tooltip'leri etkinleştir
             $('[data-toggle="tooltip"]').tooltip();
