@@ -231,9 +231,9 @@ class AppointmentController extends Controller
                         ->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::CHECKED_IN])
                         ->exists();
                     
-                    if ($hasActiveAppointment) {
-                        $fail('Bu evcil hayvanın zaten planlanmış veya devam eden bir randevusu bulunmaktadır.');
-                    }
+                    // if ($hasActiveAppointment) {
+                    //     $fail('Bu evcil hayvanın zaten planlanmış veya devam eden bir randevusu bulunmaktadır.');
+                    // }
                 },
             ],
             'planned_at' => 'required|date_format:Y-m-d\\TH:i',

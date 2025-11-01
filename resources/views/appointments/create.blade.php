@@ -340,7 +340,7 @@
                         customer_id: customer.id,
                         pet_id: pet.id,
                         breed_id: pet.breed_id,
-                        disabled: hasAppointment,
+                        disabled: false,
                         hasAppointment: hasAppointment,
                         segment_name: segmentName,
                         segment_icon: segmentIcon,
