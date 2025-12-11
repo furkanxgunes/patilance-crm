@@ -16,6 +16,12 @@ use App\Http\Controllers\ChatController;
 Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
+// routes/web.php
+Route::get('/delivery-pdf/{appointment_id}/{token}', [DeliveryController::class, 'showPdf'])
+    ->name('delivery.pdf');
+
+Route::get('/pdf/{appointment_id}/{token}', [DeliveryController::class, 'showPdf'])
+    ->name('pdf');
 
 Route::get('/', function () {
     if (auth()->check()) {

@@ -30,7 +30,6 @@ class WhatsAppMessage extends Model
         'sent_at' => 'datetime',
         'metadata' => 'array',
         'payment_status_value' => 'boolean', // Boolean olarak cast etmek de faydalı olacaktır
-
     ];
 
     public function customer(): BelongsTo

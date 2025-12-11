@@ -68,6 +68,7 @@ return [
     * Senin özel provider
     */
     App\Providers\WhatsAppServiceProvider::class,
+    App\Providers\NetGSMServiceProvider::class,
 ],
 
     /*

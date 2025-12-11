@@ -28,5 +28,9 @@ class AppServiceProvider extends ServiceProvider
         \App::setLocale('tr');
         Carbon::setLocale('tr');
         setlocale(LC_TIME, 'tr_TR.UTF-8', 'tr_TR', 'tr-TR', 'tr', 'turkish');
+        
+        if (env('APP_ENV') === 'production') {
+        URL::forceScheme('https');
+    }
     }
 }
