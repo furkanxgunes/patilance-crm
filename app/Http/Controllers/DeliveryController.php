@@ -34,13 +34,11 @@ class DeliveryController extends Controller
             return $this->appointmentController->deliveryPdf($appointment);
         }
         
-        elseif($appointment->status->value == 'completed') {
+        if($appointment->status->value == 'completed') {
             return $this->appointmentController->pdf($appointment);
         }
 
-        else {
-            return $appointment->status->value;
-        }
+        return 0;
         
     }
 }

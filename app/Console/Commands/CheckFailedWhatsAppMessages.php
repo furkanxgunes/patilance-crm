@@ -61,37 +61,39 @@ public function handle()
 
             // SMS içeriğini oluştur
             // Token olustur PDF için
-if ($templateName === 'appointment_checked_in') {
-    $token = Str::random(32);
-    
-    DeliveryToken::create([
-        'appointment_id' => $originalMessage->appointment_id,
-        'token' => $token,
-        'expires_at' => now()->addDays(3) // 3 gün geçerli
-    ]);
-    
-    // PDF görüntüleme linkini oluştur
-    $params[5] = route('delivery.pdf', [
-        'appointment_id' => $originalMessage->appointment_id,
-        'token' => $token
-    ]);
-}
-if ($templateName === 'appointment_completed') {
-    $token = Str::random(14);
-    
-    DeliveryToken::create([
-        'appointment_id' => $originalMessage->appointment_id,
-        'token' => $token,
-        'expires_at' => now()->addDays(3) // 3 gün geçerli
-    ]);
-    
-    // PDF görüntüleme linkini oluştur
-    $params[5] = route('pdf', [
-        'appointment_id' => $originalMessage->appointment_id,
-        'token' => $token
-    ]);
-    
-}
+            if ($templateName === 'appointment_checked_in') {
+                $token = Str::random(32);
+                
+                DeliveryToken::create([
+                    'appointment_id' => $originalMessage->appointment_id,
+                    'token' => $token,
+                    'expires_at' => now()->addDays(3) // 3 gün geçerli
+                ]);
+                
+                // PDF görüntüleme linkini oluştur
+                $params[5] = route('delivery.pdf', [
+                    'appointment_id' => $originalMessage->appointment_id,
+                    'token' => $token
+                ]);
+            }
+
+            
+            if ($templateName === 'appointment_completed') {
+                $token = Str::random(14);
+                
+                DeliveryToken::create([
+                    'appointment_id' => $originalMessage->appointment_id,
+                    'token' => $token,
+                    'expires_at' => now()->addDays(3) // 3 gün geçerli
+                ]);
+                
+                // PDF görüntüleme linkini oluştur
+                $params[5] = route('pdf', [
+                    'appointment_id' => $originalMessage->appointment_id,
+                    'token' => $token
+                ]);
+                
+            }
             $smsContent = $this->createSmsFromTemplate($templateName, $params);
              
         
