@@ -50,7 +50,7 @@ public function handle()
             $originalMessage = WhatsAppMessage::where('metadata', 'LIKE', '%' . $log->message_id . '%')->first();
 
             if (!$originalMessage) {
-                $this->warn("Orijinal mesaj bulunamadı: {$log->message_id}");
+                //$this->warn("Orijinal mesaj bulunamadı: {$log->message_id}");
                 continue;
             }
 
@@ -104,15 +104,15 @@ if ($templateName === 'appointment_completed') {
             $log->sms_attempted_at = now();
             $updated = $log->save();
             
-            if ($updated) {
-                $this->info("sms_attempted_at güncellendi: " . $log->sms_attempted_at);
-            } else {
-                $this->error("sms_attempted_at güncellenemedi!");
-                \Log::error('sms_attempted_at güncellenemedi', [
-                    'message_id' => $log->message_id,
-                    'log' => $log->toArray()
-                ]);
-            }
+            // if ($updated) {
+            //     $this->info("sms_attempted_at güncellendi: " . $log->sms_attempted_at);
+            // } else {
+            //     $this->error("sms_attempted_at güncellenemedi!");
+            //     \Log::error('sms_attempted_at güncellenemedi', [
+            //         'message_id' => $log->message_id,
+            //         'log' => $log->toArray()
+            //     ]);
+            // }
 
 
         } catch (\Exception $e) {

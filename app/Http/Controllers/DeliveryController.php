@@ -29,12 +29,18 @@ class DeliveryController extends Controller
 
         // Randevuyu bul
         $appointment = Appointment::findOrFail($appointmentId);
-        if($appointment->status == 'checked_id') {
+        
+        if($appointment->status->value == 'checked_in') {
             return $this->appointmentController->deliveryPdf($appointment);
         }
-        if($appointment->status == 'checked_out') {
+        
+        elseif($appointment->status->value == 'completed') {
             return $this->appointmentController->pdf($appointment);
         }
-        // Mevcut PDF oluşturma metodunu çağır
+
+        else {
+            return $appointment->status->value;
+        }
+        
     }
 }
