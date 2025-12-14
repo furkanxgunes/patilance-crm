@@ -22,7 +22,7 @@ class DeliveryController extends Controller
             ->where('token', $token)
             ->where('expires_at', '>', now())
             ->first();
-
+        
         if (!$validToken) {
             abort(404, 'Geçersiz veya süresi dolmuş bağlantı');
         }
