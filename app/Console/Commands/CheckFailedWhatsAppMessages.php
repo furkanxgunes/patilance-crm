@@ -36,7 +36,7 @@ public function handle()
     $failedLogs = WaMessageLog::query()
         ->where('status', 'failed')
         ->whereNull('sms_attempted_at')
-        ->where('created_at', '>=', now())
+        ->where('created_at', '>=', now()->subMinutes(10))
         ->get();
 
     if ($dryRun) {
