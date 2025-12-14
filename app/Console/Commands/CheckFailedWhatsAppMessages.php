@@ -40,7 +40,9 @@ public function handle()
         ->get();
 
     if ($dryRun) {
+     
         $this->info("DRY RUN: Toplam {$failedLogs->count()} adet işlenecek mesaj bulundu.");
+
         return Command::SUCCESS;
     }
 
@@ -54,8 +56,8 @@ public function handle()
                 continue;
             }
 
-            //$phone = $originalMessage->customer->phone;
-            $phone = "905385297751";
+            $phone = $originalMessage->customer->phone;
+            //$phone = "05385297751";
             $templateName = $originalMessage->type;
             $params = $originalMessage->metadata['template_params'] ?? [];
 
@@ -96,7 +98,8 @@ public function handle()
             }
             $smsContent = $this->createSmsFromTemplate($templateName, $params);
              
-        
+            $this->info(" Telefon: {$phone}");
+
             $this->netGSMService->sendSms($phone, $smsContent, $log->message_id);
             
             

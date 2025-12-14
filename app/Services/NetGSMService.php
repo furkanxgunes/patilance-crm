@@ -48,16 +48,16 @@ public function sendSms(string $phone, string $message, ?string $waMessageId = n
         $response = $client->post($this->config['api_url'], [
             'form_params' => $params
         ]);
-
+     
         $responseBody = $response->getBody()->getContents();
-        
+       
         // Başarılı yanıt kontrolü
-        if (strpos($responseBody, '00') === 0 || strpos($responseBody, '01') === 0) {
+        if (strpos($responseBody, '00') === 0 || strpos($responseBody, '01') === 0 || strpos($responseBody, '02') === 0) {
             $smsLog->update([
                 'status' => 'sent',
                 'response' => $responseBody
             ]);
-            return ['success' => true, 'message' => 'SMS başarıyla gönderildi'];
+            return ['success' => true, 'message' => 'SMS başarıyla gönderildi', 'knk' => 'burdayiiiiizz.!!'];
         }
 
         // Hata durumunda

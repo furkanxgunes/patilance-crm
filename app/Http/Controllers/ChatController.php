@@ -24,6 +24,15 @@ class ChatController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+  $query = WhatsAppMessage::with('customer', 'appointment')
+    ->when($search, function($q) use ($search) {
+        $q->whereHas('customer', function($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('phone', 'like', "%{$search}%");
+        });
+    })
+    ->latest();
+        $messages = $query->paginate(20);
 
         $matchingStandardizedCustomerPhones = [];
         if ($search) {
@@ -44,7 +53,11 @@ class ChatController extends Controller
             ->whereNotNull('wa_id')
             ->select([
                 'wa_id',
+                
                 DB::raw('MAX(created_at) AS last_at'), // BURAYI DÜZELTTİK!
+        DB::raw('(SELECT message_id FROM wa_message_logs AS last_msg 
+                 WHERE last_msg.wa_id = wa_message_logs.wa_id 
+                 ORDER BY last_msg.created_at DESC, last_msg.id DESC LIMIT 1) as last_message_id'),
                 DB::raw('SUM(CASE WHEN direction="inbound" THEN 1 ELSE 0 END) AS inbound_count'),
                 DB::raw('SUM(CASE WHEN direction="outbound" THEN 1 ELSE 0 END) AS outbound_count'),
                 // EN SON MESAJIN DURUMUNU VE YÖNÜNÜ ÇEKEN ALT SORGULAR
@@ -54,6 +67,7 @@ class ChatController extends Controller
                 DB::raw('(SELECT direction FROM wa_message_logs AS last_msg_direction
                          WHERE last_msg_direction.wa_id = wa_message_logs.wa_id
                          ORDER BY last_msg_direction.created_at DESC, last_msg_direction.id DESC LIMIT 1) as last_status_direction')
+                         
             ])
             ->groupBy('wa_id')
             ->orderByDesc('last_at');

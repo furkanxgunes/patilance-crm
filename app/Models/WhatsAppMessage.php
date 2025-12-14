@@ -41,4 +41,39 @@ class WhatsAppMessage extends Model
     {
         return $this->belongsTo(Appointment::class);
     }
+    // WhatsAppMessage modeline ekleyin
+public function smsLogs()
+{
+    return $this->hasMany(SmsLog::class, 'wa_message_id');
+}
+
+public function getHasSmsAttribute()
+{
+    return $this->smsLogs()->exists();
+}
+
+public function getSmsStatusAttribute()
+{
+    $latestLog = $this->smsLogs()->latest()->first();
+    
+    if (!$latestLog) {
+        return [
+            'status' => 'not_sent',
+            'label' => 'SMS Gönderilmedi',
+            'class' => 'bg-gray-100 text-gray-800'
+        ];
+    }
+
+    $statuses = [
+        'pending' => ['label' => 'Bekliyor', 'class' => 'bg-yellow-100 text-yellow-800'],
+        'sent' => ['label' => 'Gönderildi', 'class' => 'bg-green-100 text-green-800'],
+        'failed' => ['label' => 'Başarısız', 'class' => 'bg-red-100 text-red-800']
+    ];
+
+    return [
+        'status' => $latestLog->status,
+        'label' => $statuses[$latestLog->status]['label'] ?? 'Bilinmeyen',
+        'class' => $statuses[$latestLog->status]['class'] ?? 'bg-gray-100 text-gray-800'
+    ];
+}
 }

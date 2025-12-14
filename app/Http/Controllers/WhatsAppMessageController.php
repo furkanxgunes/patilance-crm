@@ -9,7 +9,9 @@ class WhatsAppMessageController extends Controller
 {
     public function index()
     {
-        $messages = WhatsAppMessage::with('appointment.customer')
+        $messages = WhatsAppMessage::with(['appointment.customer','smsLogs' => function($query){
+            $query->latest();
+        }])
             ->latest()
             ->paginate(20);
 

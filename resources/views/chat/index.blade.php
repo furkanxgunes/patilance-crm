@@ -89,10 +89,19 @@
                                                         $statusBadge = 'badge-light';
                                                         break;
                                                 }
+                                                if($thread->last_status === 'failed') {
+                                                    // check wa_message_id from sms ogs
+                                                    $smsLog = \App\Models\SmsLog::where('wa_message_id', $thread->last_message_id)->first();
+                                                    if($smsLog) {
+                                                        $displayStatus = 'SMS İletildi';
+                                                        $statusBadge = 'badge-info';
+                                                    }
+                                                }
                                             }
                                         @endphp
                                         <span class="badge {{ $statusBadge }}">{{ $displayStatus }}</span>
                                     </td>
+                              
                                     <td>{{ $thread->last_at->diffForHumans() }}</td>
                                 </tr>
                             @empty
